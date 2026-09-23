@@ -43,3 +43,20 @@ export type Item = {
 
 /** Where classification wants an item: a "/"-separated dir relative to the destination root. */
 export type Proposal = { dest: string; reason: string };
+
+export type RuleWhen = {
+  nameContains?: string;
+  glob?: string;
+  exts?: string[];
+  pathContains?: string;
+  kind?: Kind;
+  minBytes?: number;
+  maxBytes?: number;
+  olderThanDays?: number;
+  newerThanDays?: number;
+};
+
+/** A user rule: when every set condition holds, file goes to the expanded target template. */
+export type Rule = { id: string; name: string; enabled: boolean; when: RuleWhen; target: string };
+
+export type Layout = "smart" | "type" | "date" | "flat2" | "flat3" | "inplace";
