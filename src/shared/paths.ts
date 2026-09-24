@@ -36,7 +36,7 @@ const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 
 /** Makes one path segment safe as a Windows folder/file name. */
 export function sanitizeSegment(s: string): string {
-  let out = s.replace(/[<>:"/\|?*\u0000-\u001f]/g, "_").replace(/[. ]+$/g, "").trim();
+  let out = s.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/[. ]+$/g, "").trim();
   if (!out) return "Untitled";
   if (RESERVED.test(out)) out = `_${out}`;
   return out;

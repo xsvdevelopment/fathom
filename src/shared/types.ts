@@ -106,3 +106,13 @@ export type RunInfo = {
 };
 
 export type UndoSummary = { restored: number; skipped: { path: string; reason: string }[] };
+
+export type Settings = {
+  rules: Rule[];
+  layout: Layout;
+  findDuplicates: boolean;
+  readExif: boolean;
+  extraSkips: string[];
+  extraMarkers: string[];
+  recentRoots: string[];
+};

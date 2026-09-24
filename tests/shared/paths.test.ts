@@ -14,6 +14,7 @@ describe("paths", () => {
 
   it("sanitizes Windows-hostile folder names", () => {
     expect(sanitizeSegment('a<b>:c?.')).toBe("a_b__c_");
+    expect(sanitizeSegment("a\\b|c")).toBe("a_b_c");
     expect(sanitizeSegment("CON")).toBe("_CON");
     expect(sanitizeSegment("lpt3")).toBe("_lpt3");
     expect(sanitizeSegment("  ")).toBe("Untitled");
