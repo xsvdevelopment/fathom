@@ -10,8 +10,8 @@ const ORIGINAL: Record<string, string> = {
   "Downloads/invoice-7781.pdf": "i".repeat(4000),
   "Downloads/copy/invoice-7781.pdf": "i".repeat(4000),
   "Work/Clients/Acme/Q2/deliverables/brand-notes.docx": "b".repeat(4000),
-  "old laptop/my-app/.git/HEAD": "ref: refs/heads/main",
-  "old laptop/my-app/src/index.js": "console.log(1)",
+  "New folder (3)/old/my-app/.git/HEAD": "ref: refs/heads/main",
+  "New folder (3)/old/my-app/src/index.js": "console.log(1)",
 };
 
 function readTree(root: string): Record<string, string> {
@@ -52,7 +52,7 @@ test("scan, move, and undo a real folder", async () => {
 
   const after = readTree(root);
   expect(after["Finance/Taxes/2021/tax-return-2021.pdf"]).toBe(ORIGINAL["New folder/New folder (2)/old/final/tax-return-2021.pdf"]);
-  expect(after["Code/old laptop/my-app/.git/HEAD"]).toBe("ref: refs/heads/main");
+  expect(after["Code/my-app/.git/HEAD"]).toBe("ref: refs/heads/main");
   expect(after["Inbox/Installers/ChromeSetup.exe"]).toBeDefined();
   expect(Object.keys(after).some((k) => k.startsWith("_Fathom Review/Duplicates/"))).toBe(true);
   expect(Object.keys(after).some((k) => k.startsWith("New folder/"))).toBe(false);
