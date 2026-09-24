@@ -60,3 +60,33 @@ export type RuleWhen = {
 export type Rule = { id: string; name: string; enabled: boolean; when: RuleWhen; target: string };
 
 export type Layout = "smart" | "type" | "date" | "flat2" | "flat3" | "inplace";
+
+/** One move the engine will perform. Paths are absolute. */
+export type PlanItem = { id: string; type: "file" | "unit"; from: string; to: string; size: number; mtimeMs: number };
+
+export type PreflightIssue = {
+  id?: string;
+  level: "error" | "warn";
+  code: "collision" | "stale" | "missing" | "no-write" | "space" | "path-too-long" | "into-itself";
+  message: string;
+};
+
+export type PreflightResult = { items: PlanItem[]; issues: PreflightIssue[]; unchanged: number };
+
+export type RunSummary = {
+  runId: string;
+  moved: number;
+  failed: { from: string; to: string; error: string }[];
+  removedDirs: number;
+  cancelled: boolean;
+};
+
+export type JournalRecord =
+  | { op: "start"; runId: string; at: number; destRoot: string; roots: string[]; count: number }
+  | { op: "mkdir"; path: string }
+  | { op: "intent"; i: number; from: string; to: string; type: "file" | "unit" }
+  | { op: "done"; i: number; mtimeMs: number; size: number }
+  | { op: "fail"; i: number; error: string }
+  | { op: "junk"; from: string; to: string }
+  | { op: "rmdir"; path: string }
+  | { op: "end"; at: number; summary: RunSummary };
