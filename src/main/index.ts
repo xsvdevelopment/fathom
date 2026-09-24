@@ -15,7 +15,7 @@ function createWindow() {
     show: false,
     backgroundColor: "#0c0c0d",
     title: "Fathom",
-    icon: join(__dirname, "../../build/icon.png"),
+    icon: app.isPackaged ? undefined : join(__dirname, "../../build/icon.png"),
     titleBarStyle: "hidden",
     titleBarOverlay: { color: "#0c0c0d", symbolColor: "#8a8a86", height: 40 },
     webPreferences: {

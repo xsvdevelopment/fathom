@@ -1,0 +1,27 @@
+appId: dev.xsv.fathom
+productName: Fathom
+copyright: Copyright © 2026 XSV Development
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+asar: true
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Fathom
+  artifactName: Fathom-Setup-${version}.exe
+portable:
+  artifactName: Fathom-${version}-portable.exe
