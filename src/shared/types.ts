@@ -116,3 +116,5 @@ export type Settings = {
   extraMarkers: string[];
   recentRoots: string[];
 };
+
+export type RootCheck = { root: string; level: "ok" | "warn" | "block"; message?: string };

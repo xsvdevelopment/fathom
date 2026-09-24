@@ -1,8 +1,9 @@
 import { readdir, stat } from "node:fs/promises";
 import { basename, parse, relative, resolve } from "node:path";
+import type { RootCheck } from "@shared/types";
 import { unitReason } from "./markers";
 
-export type RootCheck = { root: string; level: "ok" | "warn" | "block"; message?: string };
+export type { RootCheck } from "@shared/types";
 
 const inside = (child: string, parent: string) => {
   const r = relative(parent.toLowerCase(), child.toLowerCase());
