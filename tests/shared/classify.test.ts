@@ -43,8 +43,23 @@ describe("classifySmart", () => {
     expect(dest({ rel: "DCIM/100APPLE/IMG_2.HEIC", takenMs: Date.UTC(2021, 5, 1) })).toBe("Media/Photos 2021");
   });
 
+  it.each([
+    ["reveng/MYS/smali/i/w2.smali"],
+    ["qweqwe/apk/smali_classes2/w2/a.smali"],
+    ["Taxes/2021/notes.bin"],
+    ["Taxes/2021/lib/libil2cpp.so"],
+  ])("never files code or unknown files under Finance: %s", (rel) => {
+    expect(dest({ rel })).not.toMatch(/^Finance/);
+  });
+
   it("sends protected units to Code", () => {
     expect(dest({ rel: "Desktop/old/my-app", type: "unit" })).toBe("Code");
+  });
+
+  it("keeps a project beside its siblings under the folder that named them", () => {
+    expect(dest({ rel: "ncwd/MGNClean-Backup3", type: "unit" })).toBe("Code/ncwd");
+    expect(dest({ rel: "WorkDir2/OLD/MGNSuite", type: "unit" })).toBe("Code/WorkDir2");
+    expect(dest({ rel: "Projects/site", type: "unit" })).toBe("Code");
   });
 
   it("gives every proposal a human reason", () => {

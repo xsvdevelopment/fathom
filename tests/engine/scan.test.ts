@@ -58,6 +58,51 @@ describe("scan", () => {
     expect(x.id).toMatch(/^[0-9a-f]{16}$/);
   });
 
+  it("leaves folders marked do-not-touch completely alone", async () => {
+    const root = await makeTree({
+      "MOGO1/Fresh - Do Not Modify/1631/a.smali": "a",
+      "MOGO1/DONT TOUCH/x.txt": "x",
+      "MOGO1/do not move this/y.txt": "y",
+      "MOGO1/log.txt": "l",
+    });
+    const { items } = await scan([root], {});
+    expect(items.map((i) => i.rel)).toEqual(["MOGO1/log.txt"]);
+  });
+
+  it("treats a folder as the project root when its jni or src folder holds the build file", async () => {
+    const root = await makeTree({
+      "menufix/LGLModMenu/mod.json": "{}",
+      "menufix/LGLModMenu/jni/Android.mk": "x",
+      "menufix/LGLModMenu/jni/Main.cpp": "x",
+      "menufix/notes.txt": "n",
+    });
+    const { items } = await scan([root], {});
+    expect(items.map((i) => i.rel).sort()).toEqual(["menufix/LGLModMenu", "menufix/notes.txt"]);
+    expect(items.find((i) => i.rel === "menufix/LGLModMenu")).toMatchObject({ type: "unit", fileCount: 3 });
+  });
+
+  it("treats a folder whose jni or src folder holds code as the project root", async () => {
+    const root = await makeTree({
+      "menufix/lgl_template_extended/mod.json": "{}",
+      "menufix/lgl_template_extended/jni/main.cpp": "x",
+      "menufix/lgl_template_extended/jni/Hook.h": "x",
+      "Docs/src/essay.docx": "d",
+    });
+    const { items } = await scan([root], {});
+    expect(items.map((i) => i.rel).sort()).toEqual(["Docs/src/essay.docx", "menufix/lgl_template_extended"]);
+  });
+
+  it("keeps decompiled apps and unmarked code trees whole", async () => {
+    const files: Record<string, string> = { "RE/apk1/apktool.yml": "v", "RE/apk1/smali/a/b.smali": "s", "RE/notes.txt": "n" };
+    for (let i = 0; i < 25; i += 1) files[`RE/dex-disasm/com/x/C${i}.smali`] = "s";
+    const root = await makeTree(files);
+    const { items } = await scan([root], {});
+    const byRel = new Map(items.map((i) => [i.rel, i]));
+    expect([...byRel.keys()].sort()).toEqual(["RE/apk1", "RE/dex-disasm", "RE/notes.txt"]);
+    expect(byRel.get("RE/apk1")).toMatchObject({ type: "unit", unitReason: "Decompiled Android app" });
+    expect(byRel.get("RE/dex-disasm")).toMatchObject({ type: "unit", fileCount: 25 });
+  });
+
   it("treats bundles like .app folders as units and honors extra skips and markers", async () => {
     const root = await makeTree({
       "Tools/Thing.app/Contents/x": "x",

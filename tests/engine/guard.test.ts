@@ -37,6 +37,12 @@ describe.runIf(process.platform === "win32")("checkRoot", () => {
     expect(r.message).toMatch(/inside/i);
   });
 
+  it("never treats the home folder as a project, even with an agent file in it", async () => {
+    const home = await makeTree({ "CLAUDE.md": "x", "Desktop/a.txt": "a" });
+    expect((await checkRoot(join(home, "Desktop"), { dataDir: DATA, home })).level).toBe("ok");
+    expect((await checkDest(join(home, "Desktop", "Tidy"), { dataDir: DATA, home })).level).toBe("ok");
+  });
+
   it("blocks a missing folder", async () => {
     const r = await checkRoot("C:\\definitely\\not\\here\\fathom", { dataDir: DATA, home: HOME });
     expect(r.level).toBe("block");

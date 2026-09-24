@@ -13,7 +13,16 @@ const CHILD_MARKERS: [RegExp, string][] = [
   [/\.xcodeproj$|\.xcworkspace$/i, "Xcode project"],
   [/\.uproject$/i, "Unreal project"],
   [/^composer\.json$|^gemfile$/i, "Code project"],
+  [/^(gradlew|gradlew\.bat)$/i, "Java project"],
+  [/^(cmakelists\.txt|makefile|gnumakefile|meson\.build|build\.ninja|android\.mk|application\.mk)$/i, "Native build project"],
+  [/^apktool\.yml$/i, "Decompiled Android app"],
+  [/^classes\d*\.dex$|^resources\.arsc$/i, "Unpacked Android app"],
+  [/^module\.prop$/i, "Magisk module"],
+  [/^(claude|agents|gemini)\.md$/i, "Coding-agent project"],
 ];
+
+/** Folders that sit beside AndroidManifest.xml in an app, a decompiled app, or a source set. */
+const ANDROID_PART = /^(res|smali(_classes\d+)?|lib|assets|java|kotlin|jni|cpp|aidl|original|unknown)$/i;
 
 /** Folder names that are themselves a bundle (a "file" made of a folder). */
 const BUNDLE_DIR: [RegExp, string][] = [
@@ -22,7 +31,18 @@ const BUNDLE_DIR: [RegExp, string][] = [
   [/\.(xcodeproj|xcworkspace)$/i, "Xcode project"],
 ];
 
-const RUNTIME = /\.(exe|dll|pak|dat|bin|json|ini|cfg|xml|manifest|so|pdb|asar|node|lib|config)$/i;
+/** Folder names that only appear in source code layouts; two together make a source tree. */
+const SOURCE_DIRS = new Set(["java", "kotlin", "jni", "cpp", "aidl", "native", "include", "src"]);
+
+/** An Android app's private storage (/data/data/<app>) pulled to disk. */
+const APP_DATA_DIRS = new Set(["files", "cache", "code_cache", "shared_prefs", "prefs", "databases", "no_backup"]);
+
+const count = (names: Set<string>, of: Set<string>) => [...of].filter((n) => names.has(n)).length;
+
+/** Folders that hold a project's build file one level down: the project root is their parent. */
+export const SOURCE_PART = /^(jni|src|cpp|app|main|native)$/;
+
+const RUNTIME =/\.(exe|dll|pak|dat|bin|json|ini|cfg|xml|manifest|so|pdb|asar|node|lib|config)$/i;
 
 /**
  * An installed or portable program: an .exe beside its .dll files, where most of the folder is runtime
@@ -40,6 +60,10 @@ export function unitReason(dirName: string, childNames: string[], extraMarkers: 
   for (const [re, why] of BUNDLE_DIR) if (re.test(dirName)) return why;
   const lower = new Set(childNames.map((c) => c.toLowerCase()));
   if (lower.has("assets") && lower.has("projectsettings")) return "Unity project";
+  if (lower.has("androidmanifest.xml") && childNames.some((c) => ANDROID_PART.test(c))) return "Android app";
+  if (count(lower, SOURCE_DIRS) >= 2) return "Source tree";
+  if (count(lower, APP_DATA_DIRS) >= 2) return "App data";
+  if (lower.has("dump.cs") &&(lower.has("il2cpp.h") || lower.has("script.json") || lower.has("dummydll"))) return "IL2CPP dump";
   for (const name of childNames) {
     for (const [re, why] of CHILD_MARKERS) if (re.test(name)) return why;
   }

@@ -76,9 +76,14 @@ function areaFor(dirs: string[]): { area: AreaName; project?: string } | null {
 
 /** The built-in "smart" placement for one item. First matching rule wins. */
 export function classifySmart(item: Item): Proposal {
-  if (item.type === "unit") return at("Code", `Project folder (${item.unitReason ?? "marker found"})`);
-
   const dirs = dirsOf(item);
+  if (item.type === "unit") {
+    // Keep sibling projects together under the folder that grouped them, so "ncwd/MGNSuite" and
+    // "NewWork/MGNSuite" don't collide as "Code/MGNSuite (2)".
+    const group = nearestMeaningful(dirs);
+    return at(group ? `Code/${group}` : "Code", `Project folder (${item.unitReason ?? "marker found"})`);
+  }
+
   const name = words(item.name);
   const hay = `${name} ${dirs.map(words).join(" ")}`;
 
@@ -96,7 +101,8 @@ export function classifySmart(item: Item): Proposal {
       : at("Inbox/Programs", "Program file on its own");
   }
 
-  const docLike = !["code", "video", "audio", "font", "installer"].includes(item.kind);
+  // Only things a person reads can be a tax form or a recipe; a "w2.smali" is code.
+  const docLike = ["document", "spreadsheet", "presentation", "image", "archive", "design", "ebook"].includes(item.kind);
   if (docLike && /\b(tax|taxes|w ?2|1099(?: \w+)?|return \d{4})\b/.test(hay)) {
     const year = yearFor(item, dirs);
     return at(`Finance/Taxes/${year}`, `Tax document, ${year}`);

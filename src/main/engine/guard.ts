@@ -1,5 +1,5 @@
 import { readdir, stat } from "node:fs/promises";
-import { basename, dirname, parse, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, parse, relative, resolve } from "node:path";
 import type { RootCheck } from "@shared/types";
 import { unitReason } from "./markers";
 
@@ -47,14 +47,14 @@ export async function checkRoot(
     try {
       const st = await stat(abs);
       if (!st.isDirectory()) return { root, level: "block", message: "That is a file, not a folder." };
-      const why = unitReason(basename(abs), await readdir(abs));
+      const why = isHomeOrAbove(abs, opts.home) ? null : unitReason(basename(abs), await readdir(abs));
       if (why) {
         return { root, level: "block", message: `This folder is a ${why.toLowerCase()}. Fathom keeps projects whole, so it won't reorganize inside one.` };
       }
     } catch {
       return { root, level: "block", message: "Fathom can't open this folder. It may have been moved or you may not have access." };
     }
-    const above = await projectAt(abs, false);
+    const above = await projectAt(abs, false, opts.home);
     if (above) {
       return { root, level: "block", message: `This folder is inside a ${above.why.toLowerCase()} (${basename(above.dir)}). Fathom keeps projects whole, so it won't reorganize inside one.` };
     }
@@ -69,8 +69,14 @@ export async function checkRoot(
   return { root, level: "ok" };
 }
 
+/** The home folder and everything above it hold settings files (CLAUDE.md and the like), never a project. */
+function isHomeOrAbove(dir: string, home: string): boolean {
+  const rel = relative(resolve(dir).toLowerCase(), resolve(home).toLowerCase());
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
 /** The nearest folder at or above `abs` that is a project, and why; null if there is none. */
-async function projectAt(abs: string, includeSelf: boolean): Promise<{ dir: string; why: string } | null> {
+async function projectAt(abs: string, includeSelf: boolean, home: string): Promise<{ dir: string; why: string } | null> {
   let cur = includeSelf ? abs : dirname(abs);
   if (!includeSelf && cur === abs) return null;
   for (;;) {
@@ -80,6 +86,7 @@ async function projectAt(abs: string, includeSelf: boolean): Promise<{ dir: stri
     } catch {
       // doesn't exist yet (or unreadable): check its parent
     }
+    if (isHomeOrAbove(cur, home)) return null;
     if (children) {
       const why = unitReason(basename(cur), children);
       if (why) return { dir: cur, why };
@@ -98,7 +105,7 @@ export async function checkDest(dest: string, opts: GuardOptions): Promise<RootC
   const abs = resolve(dest);
   const blocked = systemBlock(dest, abs, opts);
   if (blocked) return blocked;
-  const project = await projectAt(abs, true);
+  const project = await projectAt(abs, true, opts.home);
   if (project) {
     return { root: dest, level: "block", message: `That folder is inside a ${project.why.toLowerCase()} (${basename(project.dir)}). Moving files into it could break the project.` };
   }

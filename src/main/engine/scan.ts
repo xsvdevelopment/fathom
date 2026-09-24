@@ -1,11 +1,12 @@
-import { createHash } from "node:crypto";
 import { lstat, opendir, readdir } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { kindOf } from "@shared/kinds";
 import { extOf } from "@shared/paths";
 import type { Item } from "@shared/types";
+import { collapseCodeTrees } from "./codetrees";
 import { EXIF_EXTS, readTakenDate } from "./exif";
-import { unitReason } from "./markers";
+import { itemId } from "./ids";
+import { SOURCE_PART, unitReason } from "./markers";
 
 export type ScanProgress = { files: number; dirs: number; bytes: number; current: string };
 export type ScanError = { path: string; message: string };
@@ -23,6 +24,9 @@ const SKIP_NAMES = new Set([
   "appdata", "_fathom review", "icon\r", "pagefile.sys", "hiberfil.sys", "swapfile.sys", "dumpstack.log",
   "dumpstack.log.tmp",
 ]);
+
+/** A name that asks to be left alone ("Fresh - Do Not Modify", "DONT TOUCH"): never scanned, never moved. */
+const HANDS_OFF = /\b(do ?not|don'?t)[ _-]+(modify|touch|move|change|edit|delete|sort)\b/i;
 
 /** Folders that belong to Windows or installed programs; never listed at the top of a root. */
 const SYSTEM_TOP = new Set([
@@ -59,16 +63,34 @@ export class CancelledError extends Error {
   }
 }
 
-export function itemId(root: string, rel: string): string {
-  return createHash("sha1").update(`${root}\0${rel}`).digest("hex").slice(0, 16);
-}
+export { itemId } from "./ids";
 
 function skipMatcher(extra: string[]): (name: string) => boolean {
   const patterns = extra
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => new RegExp(`^${s.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".")}$`, "i"));
-  return (name) => name.startsWith(".") || name.startsWith("~$") || SKIP_NAMES.has(name.toLowerCase()) || patterns.some((p) => p.test(name));
+  return (name) =>
+    name.startsWith(".") || name.startsWith("~$") || SKIP_NAMES.has(name.toLowerCase()) || HANDS_OFF.test(name) || patterns.some((p) => p.test(name));
+}
+
+/**
+ * A project whose build file lives in its jni/src/app folder ("LGLModMenu/jni/Android.mk"): the folder
+ * holding that source folder is the project root, so the build file and its neighbours stay together.
+ */
+async function markedBelow(abs: string, children: string[], extraMarkers?: string[]): Promise<string | null> {
+  for (const name of children) {
+    if (!SOURCE_PART.test(name)) continue;
+    try {
+      const inside = await readdir(join(abs, name));
+      const why = unitReason(name, inside, extraMarkers);
+      if (why && why !== "Program folder") return why;
+      if (/^(jni|src|cpp)$/.test(name) && inside.filter((c) => kindOf(c) === "code").length >= 2) return "Source tree";
+    } catch {
+      // not a folder, or unreadable
+    }
+  }
+  return null;
 }
 
 /** Counts files and bytes under a unit folder without following links. Stops counting at `cap` files. */
@@ -161,7 +183,7 @@ export async function scan(roots: string[], opts: ScanOptions): Promise<ScanResu
             errors.push({ path: childAbs, message: (err as Error).message });
             continue;
           }
-          const why = unitReason(n.name, children, opts.extraMarkers);
+          const why = unitReason(n.name, children, opts.extraMarkers) ?? (await markedBelow(childAbs, children, opts.extraMarkers));
           if (!why) {
             stack.push({ abs: childAbs, rel: childRel });
             continue;
@@ -214,8 +236,10 @@ export async function scan(roots: string[], opts: ScanOptions): Promise<ScanResu
     }
   }
 
+  const found = collapseCodeTrees(items);
+
   if (opts.readExif) {
-    const photos = items.filter((i) => i.type === "file" && EXIF_EXTS.has(i.ext));
+    const photos = found.filter((i) => i.type === "file" && EXIF_EXTS.has(i.ext));
     let next = 0;
     const worker = async () => {
       while (next < photos.length) {
@@ -229,5 +253,5 @@ export async function scan(roots: string[], opts: ScanOptions): Promise<ScanResu
   }
 
   tick(true);
-  return { items, errors, roots };
+  return { items: found, errors, roots };
 }
