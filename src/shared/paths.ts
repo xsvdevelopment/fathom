@@ -1,7 +1,7 @@
 export function posixJoin(...parts: string[]): string {
   return parts
     .flatMap((part) => part.split("/"))
-    .map((part) => part.trim())
+    // Never trim: " Old" is a real folder name people use to sort things first.
     .filter((part) => part.length > 0 && part !== ".")
     .join("/");
 }

@@ -108,7 +108,13 @@ export function Studio() {
 
   const chooseDest = async () => {
     const p = await window.fathom.pickFolder();
-    if (p) setDestRoot(p);
+    if (!p) return;
+    const check = await window.fathom.checkDest(p);
+    if (check.level === "block") {
+      toast.error(check.message ?? "Fathom can't put files there.", { description: p });
+      return;
+    }
+    setDestRoot(p);
   };
 
   const exportCsv = async () => {

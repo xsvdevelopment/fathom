@@ -22,6 +22,19 @@ const BUNDLE_DIR: [RegExp, string][] = [
   [/\.(xcodeproj|xcworkspace)$/i, "Xcode project"],
 ];
 
+const RUNTIME = /\.(exe|dll|pak|dat|bin|json|ini|cfg|xml|manifest|so|pdb|asar|node|lib|config)$/i;
+
+/**
+ * An installed or portable program: an .exe beside its .dll files, where most of the folder is runtime
+ * files. A Downloads folder that happens to hold one stray .dll next to many documents doesn't qualify.
+ */
+function isProgramFolder(childNames: string[]): boolean {
+  const lower = childNames.map((c) => c.toLowerCase());
+  if (!lower.some((c) => c.endsWith(".exe")) || !lower.some((c) => c.endsWith(".dll"))) return false;
+  const runtime = lower.filter((c) => RUNTIME.test(c) || !c.includes(".")).length;
+  return runtime * 2 >= lower.length;
+}
+
 /** Returns why `dirName` (with children `childNames`) must move whole, or null. */
 export function unitReason(dirName: string, childNames: string[], extraMarkers: string[] = []): string | null {
   for (const [re, why] of BUNDLE_DIR) if (re.test(dirName)) return why;
@@ -30,6 +43,7 @@ export function unitReason(dirName: string, childNames: string[], extraMarkers: 
   for (const name of childNames) {
     for (const [re, why] of CHILD_MARKERS) if (re.test(name)) return why;
   }
+  if (isProgramFolder(childNames)) return "Program folder";
   const extras = new Set(extraMarkers.map((m) => m.trim().toLowerCase()).filter(Boolean));
   for (const name of childNames) if (extras.has(name.toLowerCase())) return `Marked by ${name}`;
   return null;

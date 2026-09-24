@@ -37,3 +37,9 @@ export function folderName(abs: string): string {
   const parts = abs.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] ?? abs;
 }
+
+/** The plain message from an error, without Electron's "Error invoking remote method …" wrapper. */
+export function errText(err: unknown, fallback = "Something went wrong."): string {
+  const msg = err instanceof Error ? err.message : typeof err === "string" ? err : "";
+  return msg.replace(/^Error invoking remote method '[^']*': (?:Error: )?/, "") || fallback;
+}

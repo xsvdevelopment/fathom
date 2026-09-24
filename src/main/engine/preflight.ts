@@ -36,7 +36,8 @@ export async function preflight(items: PlanItem[], destRoot: string, fs: Fs = re
   }
 
   for (const item of items) {
-    if (item.from === item.to) {
+    // Same path, or only the letter case differs (Windows treats those as the same place).
+    if (key(item.from) === key(item.to)) {
       unchanged += 1;
       continue;
     }

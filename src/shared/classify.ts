@@ -85,7 +85,16 @@ export function classifySmart(item: Item): Proposal {
   if ((item.kind === "image" || item.kind === "video") && /^(screenshot|screen shot|screen recording|capture|snip)/.test(name)) {
     return at(`Media/Screenshots/${yearFor(item, [])}`, "Screenshot");
   }
-  if (item.kind === "installer") return at("Inbox/Installers", "Installer — safe to review and delete later");
+  if (item.kind === "installer") {
+    const setupLike =
+      item.ext !== ".exe" ||
+      /(setup|install|installer|update|upgrade|x64|x86|amd64|win(32|64)?|\d+\.\d+)/.test(name) ||
+      /\bdownloads?\b/.test(hay) ||
+      dirs.length === 0;
+    return setupLike
+      ? at("Inbox/Installers", "Installer — safe to review and delete later")
+      : at("Inbox/Programs", "Program file on its own");
+  }
 
   const docLike = !["code", "video", "audio", "font", "installer"].includes(item.kind);
   if (docLike && /\b(tax|taxes|w ?2|1099(?: \w+)?|return \d{4})\b/.test(hay)) {

@@ -121,4 +121,35 @@ describe("scan", () => {
     expect(items).toHaveLength(10_000);
     expect(performance.now() - t).toBeLessThan(5000);
   }, 120_000);
+
+  it("never lists system folders or swap files at the top of a root", async () => {
+    const root = await makeTree({
+      "Windows/System32/drivers/x.sys": "s",
+      "Program Files/App/app.exe": "e",
+      "Program Files (x86)/Old/old.exe": "e",
+      "ProgramData/Vendor/cfg.ini": "c",
+      "Recovery/r.txt": "r",
+      "PerfLogs/p.txt": "p",
+      "pagefile.sys": "p",
+      "hiberfil.sys": "h",
+      "Keep/me.txt": "m",
+    });
+    const { items } = await scan([root], {});
+    expect(items.map((i) => i.rel)).toEqual(["Keep/me.txt"]);
+  });
+
+  it("keeps program folders (an .exe with its .dll files) whole", async () => {
+    const root = await makeTree({ "Tools/App/app.exe": "e", "Tools/App/core.dll": "d", "Tools/App/data/x.pak": "x", "Tools/putty.exe": "p" });
+    const { items } = await scan([root], {});
+    const byRel = new Map(items.map((i) => [i.rel, i]));
+    expect(byRel.get("Tools/App")).toMatchObject({ type: "unit", unitReason: "Program folder", fileCount: 3 });
+    expect(byRel.get("Tools/putty.exe")?.type).toBe("file");
+  });
+
+  it("scans each file once when roots overlap", async () => {
+    const root = await makeTree({ "a.txt": "a", "sub/b.txt": "b" });
+    const { items, roots } = await scan([root, join(root, "sub"), root.toUpperCase()], {});
+    expect(roots).toEqual([root]);
+    expect(items.map((i) => i.rel).sort()).toEqual(["a.txt", "sub/b.txt"]);
+  });
 });

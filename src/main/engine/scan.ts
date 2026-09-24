@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { lstat, opendir, readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { kindOf } from "@shared/kinds";
 import { extOf } from "@shared/paths";
 import type { Item } from "@shared/types";
@@ -20,8 +20,37 @@ export type ScanOptions = {
 
 const SKIP_NAMES = new Set([
   "desktop.ini", "thumbs.db", "ehthumbs.db", ".ds_store", "$recycle.bin", "system volume information",
-  "appdata", "_fathom review", "icon\r",
+  "appdata", "_fathom review", "icon\r", "pagefile.sys", "hiberfil.sys", "swapfile.sys", "dumpstack.log",
+  "dumpstack.log.tmp",
 ]);
+
+/** Folders that belong to Windows or installed programs; never listed at the top of a root. */
+const SYSTEM_TOP = new Set([
+  "windows", "program files", "program files (x86)", "programdata", "recovery", "perflogs", "$winreagent",
+  "$sysreset", "$windows.~bt", "$windows.~ws", "config.msi", "msocache", "boot", "documents and settings",
+  "windowsapps", "wpsystem", "onedrivetemp",
+]);
+
+const keyOf = (p: string) => resolve(p).normalize("NFC").toLowerCase().replace(/[\\/]+$/, "");
+
+/** Drops duplicate roots and roots that sit inside another root, so no file is scanned twice. */
+export function distinctRoots(roots: string[]): string[] {
+  const out: string[] = [];
+  for (const r of roots) {
+    const k = keyOf(r);
+    const covered = out.some((o) => {
+      const rel = relative(keyOf(o), k);
+      return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+    });
+    if (covered) continue;
+    for (let i = out.length - 1; i >= 0; i -= 1) {
+      const rel = relative(k, keyOf(out[i]!));
+      if (!rel.startsWith("..") && !isAbsolute(rel)) out.splice(i, 1);
+    }
+    out.push(r);
+  }
+  return out;
+}
 
 export class CancelledError extends Error {
   constructor() {
@@ -39,7 +68,7 @@ function skipMatcher(extra: string[]): (name: string) => boolean {
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => new RegExp(`^${s.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".")}$`, "i"));
-  return (name) => name.startsWith(".") || SKIP_NAMES.has(name.toLowerCase()) || patterns.some((p) => p.test(name));
+  return (name) => name.startsWith(".") || name.startsWith("~$") || SKIP_NAMES.has(name.toLowerCase()) || patterns.some((p) => p.test(name));
 }
 
 /** Counts files and bytes under a unit folder without following links. Stops counting at `cap` files. */
@@ -89,6 +118,7 @@ export async function scan(roots: string[], opts: ScanOptions): Promise<ScanResu
     if (opts.signal?.aborted) throw new CancelledError();
   };
 
+  roots = distinctRoots(roots);
   for (const root of roots) {
     const stack: { abs: string; rel: string }[] = [{ abs: root, rel: "" }];
     while (stack.length) {
@@ -100,14 +130,25 @@ export async function scan(roots: string[], opts: ScanOptions): Promise<ScanResu
       try {
         const dir = await opendir(abs);
         for await (const e of dir) {
-          if (e.isSymbolicLink()) continue;
+          if (e.isSymbolicLink()) {
+            // Windows reports every reparse point as a link, including OneDrive/cloud placeholders.
+            // Only real symlinks and junctions are skipped; lstat tells them apart.
+            try {
+              const st = await lstat(join(abs, e.name));
+              if (st.isSymbolicLink()) continue;
+              names.push({ name: e.name, dir: st.isDirectory(), file: st.isFile() });
+            } catch {
+              // unreadable entry: leave it alone
+            }
+            continue;
+          }
           names.push({ name: e.name, dir: e.isDirectory(), file: e.isFile() });
         }
       } catch (err) {
         errors.push({ path: abs, message: (err as Error).message });
         continue;
       }
-      const kept = names.filter((n) => !skip(n.name));
+      const kept = names.filter((n) => !skip(n.name) && !(rel === "" && n.dir && SYSTEM_TOP.has(n.name.toLowerCase())));
 
       for (const n of kept) {
         const childAbs = join(abs, n.name);

@@ -65,3 +65,11 @@ describe("planCsv", () => {
     expect(csv[1]).toContain('"Loose, document"');
   });
 });
+
+describe("names with leading spaces", () => {
+  it("keeps them exactly, so Keep in place never moves anything", () => {
+    const a = mk({ rel: " Old/ notes.txt", root: ROOT });
+    const rows = buildRows([a], new Map([[a.id, { dest: " Old", reason: "Kept in place" }]]), {}, {}, ROOT);
+    expect(rows[0]).toMatchObject({ newRel: " Old/ notes.txt", moved: false });
+  });
+});

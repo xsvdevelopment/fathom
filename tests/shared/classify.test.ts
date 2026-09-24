@@ -8,6 +8,9 @@ describe("classifySmart", () => {
   it.each([
     ["Desktop/Screenshot 2023-04-01 at 10.00.png", "Media/Screenshots/2023"],
     ["Downloads/ChromeSetup.exe", "Inbox/Installers"],
+    ["Desktop/node-v20.11-x64.msi", "Inbox/Installers"],
+    ["Desktop/stuff/setup.exe", "Inbox/Installers"],
+    ["Tools/putty.exe", "Inbox/Programs"],
     ["Documents/stuff/tax-return-2019.pdf", "Finance/Taxes/2019"],
     ["Documents/New folder/W2_2021.pdf", "Finance/Taxes/2021"],
     ["Documents/Taxes/2018/1099-misc.pdf", "Finance/Taxes/2018"],

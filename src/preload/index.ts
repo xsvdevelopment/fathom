@@ -9,6 +9,7 @@ const api: FathomApi = {
   pickFolder: () => invoke("pickFolder"),
   pathForFile: (file) => webUtils.getPathForFile(file),
   checkRoots: (roots) => invoke("checkRoots", roots),
+  checkDest: (dest) => invoke("checkDest", dest),
   scan: (roots) => invoke("scan", roots),
   findDuplicates: () => invoke("findDuplicates"),
   cancel: (jobId) => invoke("cancel", jobId),

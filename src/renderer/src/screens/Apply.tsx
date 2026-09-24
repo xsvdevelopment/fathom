@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import type { RunSummary, UndoSummary } from "@shared/types";
 import { TitleBar } from "@/components/fathom/titlebar";
 import { Button } from "@/components/ui/button";
-import { formatCount, middleTruncate, plural } from "@/lib/utils";
+import { formatCount, middleTruncate, plural, errText } from "@/lib/utils";
 import { useApp } from "@/store/app";
 
 const VERB = { apply: "Moving files", undo: "Putting everything back", finish: "Finishing the interrupted run" } as const;
@@ -31,7 +31,7 @@ export function ApplyScreen() {
       const { jobId } = await window.fathom.undo(job.runId);
       startJob({ jobId, runId: job.runId, kind: "undo", done: 0, total: 0, current: "", destRoot: job.destRoot });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't start the undo.");
+      toast.error(errText(err, "Couldn't start the undo."));
     }
   };
 

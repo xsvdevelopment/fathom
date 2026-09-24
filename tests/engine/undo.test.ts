@@ -69,6 +69,21 @@ describe("undoRun", () => {
   });
 });
 
+describe("undo after a case-only folder change", () => {
+  it("puts files back without adding (restored)", async () => {
+    const root = await makeTree({ "work/notes.txt": "n", "work/Acme/brief.pdf": "b" });
+    const dataDir = await mkdtemp(join(tmpdir(), "fathom-data-"));
+    const { items } = await scan([root], {});
+    const plan: PlanItem[] = items.map((it) => ({
+      id: it.id, type: it.type, from: join(root, ...it.rel.split("/")), to: join(root, "Work", ...it.rel.split("/").slice(1)), size: it.size, mtimeMs: it.mtimeMs,
+    }));
+    await applyPlan(plan, { runId: "c1", destRoot: root, roots: [root], dataDir });
+    await undoRun("c1", { dataDir });
+    const names = Object.keys(await readTree(root)).map((k) => k.toLowerCase()).sort();
+    expect(names).toEqual(["work/acme/brief.pdf", "work/notes.txt"]);
+  });
+});
+
 describe("crash recovery", () => {
   it("finishes a run that crashed mid-way", async () => {
     const { root, dataDir, plan, opts } = await setup();

@@ -36,6 +36,7 @@ export interface FathomApi {
   pickFolder(): Promise<string | null>;
   pathForFile(file: File): string;
   checkRoots(roots: string[]): Promise<RootCheck[]>;
+  checkDest(dest: string): Promise<RootCheck>;
   scan(roots: string[]): Promise<{ jobId: string }>;
   findDuplicates(): Promise<{ jobId: string }>;
   cancel(jobId: string): Promise<void>;

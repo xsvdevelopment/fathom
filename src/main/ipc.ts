@@ -8,10 +8,10 @@ import type { Item, PlanItem, Settings } from "@shared/types";
 import { applyPlan, runDir } from "./engine/apply";
 import { findDuplicates } from "./engine/dupes";
 import { friendlyError } from "./engine/errors";
-import { checkRoot } from "./engine/guard";
+import { checkDest, checkRoot } from "./engine/guard";
 import { preflight } from "./engine/preflight";
 import { listRuns } from "./engine/runs";
-import { CancelledError, scan } from "./engine/scan";
+import { CancelledError, distinctRoots, scan } from "./engine/scan";
 import { loadSettings, saveSettings } from "./engine/settings";
 import { finishRun, undoRun } from "./engine/undo";
 
@@ -60,6 +60,20 @@ function startJob<T>(
   return { jobId };
 }
 
+const guardOpts = () => ({ dataDir: dataDir(), home: homedir() });
+
+/** Re-checks folders in the main process; the window's word is never taken for it. */
+async function allowedRoots(roots: string[]): Promise<string[]> {
+  const distinct = distinctRoots(roots);
+  const checks = await Promise.all(distinct.map((r) => checkRoot(r, guardOpts())));
+  return distinct.filter((_, i) => checks[i]!.level !== "block");
+}
+
+async function assertDest(destRoot: string): Promise<void> {
+  const c = await checkDest(destRoot, guardOpts());
+  if (c.level === "block") throw new Error(c.message ?? "Fathom can't put files there.");
+}
+
 function newRunId(): string {
   return `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomBytes(2).toString("hex")}`;
 }
@@ -79,11 +93,21 @@ export function registerIpc() {
     return r.canceled ? null : (r.filePaths[0] ?? null);
   });
 
-  ipcMain.handle("checkRoots", (_e, roots: string[]) =>
-    Promise.all(roots.map((r) => checkRoot(r, { dataDir: dataDir(), home: homedir() }))),
-  );
+  ipcMain.handle("checkRoots", async (_e, roots: string[]) => {
+    const kept = new Set(distinctRoots(roots));
+    return Promise.all(
+      roots.map(async (r) => {
+        if (!kept.has(r)) return { root: r, level: "block" as const, message: "This folder is already inside another folder you picked, so it's included once." };
+        return checkRoot(r, guardOpts());
+      }),
+    );
+  });
 
-  ipcMain.handle("scan", async (_e, roots: string[]) => {
+  ipcMain.handle("checkDest", (_e, dest: string) => checkDest(dest, guardOpts()));
+
+  ipcMain.handle("scan", async (_e, requested: string[]) => {
+    const roots = await allowedRoots(requested);
+    if (!roots.length) throw new Error("None of those folders can be scanned safely.");
     const settings = await loadSettings(dataDir());
     return startJob("scan", async (signal, progress, jobId) => {
       const res = await scan(roots, {
@@ -117,9 +141,14 @@ export function registerIpc() {
     jobs.get(jobId)?.abort();
   });
 
-  ipcMain.handle("preflight", (_e, items: PlanItem[], destRoot: string) => preflight(items, destRoot));
+  ipcMain.handle("preflight", async (_e, items: PlanItem[], destRoot: string) => {
+    await assertDest(destRoot);
+    return preflight(items, destRoot);
+  });
 
-  ipcMain.handle("apply", (_e, items: PlanItem[], destRoot: string, roots: string[]) => {
+  ipcMain.handle("apply", async (_e, items: PlanItem[], destRoot: string, roots: string[]) => {
+    await assertDest(destRoot);
+    if ((await allowedRoots(roots)).length !== distinctRoots(roots).length) throw new Error("One of the scanned folders is no longer safe to change.");
     const runId = newRunId();
     const job = startJob(
       "apply",

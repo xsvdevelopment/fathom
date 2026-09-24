@@ -1,5 +1,5 @@
 import { readdir, stat } from "node:fs/promises";
-import { basename, parse, relative, resolve } from "node:path";
+import { basename, dirname, parse, relative, resolve } from "node:path";
 import type { RootCheck } from "@shared/types";
 import { unitReason } from "./markers";
 
@@ -10,15 +10,14 @@ const inside = (child: string, parent: string) => {
   return r === "" || (!!r && !r.startsWith("..") && !parse(r).root);
 };
 
-/** Decides whether a folder is safe to reorganize. */
-export async function checkRoot(
-  root: string,
-  opts: { dataDir: string; home: string; exists?: boolean },
-): Promise<RootCheck> {
-  const abs = resolve(root);
+export type GuardOptions = { dataDir: string; home: string; exists?: boolean; systemDrive?: string };
+
+const systemDriveOf = (opts: GuardOptions) => (opts.systemDrive ?? process.env.SystemDrive ?? "C:").replace(/[\\/]+$/, "").toLowerCase();
+
+/** Blocks for Windows, program, app-settings and Fathom-data folders; null when none apply. */
+function systemBlock(root: string, abs: string, opts: GuardOptions): RootCheck | null {
   const { root: drive } = parse(abs);
   const system = ["Windows", "Program Files", "Program Files (x86)", "ProgramData"].map((d) => resolve(drive, d));
-
   if (system.some((s) => inside(abs, s))) {
     return { root, level: "block", message: "This is a Windows system folder. Moving files here could break programs." };
   }
@@ -27,6 +26,21 @@ export async function checkRoot(
   }
   if (inside(abs, opts.dataDir)) {
     return { root, level: "block", message: "This is where Fathom keeps its own undo history." };
+  }
+  return null;
+}
+
+/** Decides whether a folder is safe to reorganize. */
+export async function checkRoot(
+  root: string,
+  opts: GuardOptions,
+): Promise<RootCheck> {
+  const abs = resolve(root);
+  const { root: drive } = parse(abs);
+  const blocked = systemBlock(root, abs, opts);
+  if (blocked) return blocked;
+  if (abs.replace(/[\\/]+$/, "").toLowerCase() === systemDriveOf(opts)) {
+    return { root, level: "block", message: "This is the drive Windows runs from. Pick the folders you want tidied, such as Desktop, Documents, or Downloads." };
   }
 
   if (opts.exists !== false) {
@@ -40,13 +54,53 @@ export async function checkRoot(
     } catch {
       return { root, level: "block", message: "Fathom can't open this folder. It may have been moved or you may not have access." };
     }
+    const above = await projectAt(abs, false);
+    if (above) {
+      return { root, level: "block", message: `This folder is inside a ${above.why.toLowerCase()} (${basename(above.dir)}). Fathom keeps projects whole, so it won't reorganize inside one.` };
+    }
   }
 
   if (abs.toLowerCase() === drive.toLowerCase()) {
-    return { root, level: "warn", message: "This is a whole drive. Fathom skips system folders, but a scan this large can take a while." };
+    return { root, level: "warn", message: "This is a whole drive. Fathom leaves Windows and program folders alone and keeps program folders whole, but a scan this large can take a while." };
   }
   if (abs.toLowerCase() === resolve(opts.home).toLowerCase()) {
     return { root, level: "warn", message: "This is your whole user folder. Fathom skips app settings, but consider picking Desktop, Documents, or Downloads instead." };
   }
   return { root, level: "ok" };
+}
+
+/** The nearest folder at or above `abs` that is a project, and why; null if there is none. */
+async function projectAt(abs: string, includeSelf: boolean): Promise<{ dir: string; why: string } | null> {
+  let cur = includeSelf ? abs : dirname(abs);
+  if (!includeSelf && cur === abs) return null;
+  for (;;) {
+    let children: string[] | null = null;
+    try {
+      children = await readdir(cur);
+    } catch {
+      // doesn't exist yet (or unreadable): check its parent
+    }
+    if (children) {
+      const why = unitReason(basename(cur), children);
+      if (why) return { dir: cur, why };
+    }
+    const up = dirname(cur);
+    if (up === cur) return null;
+    cur = up;
+  }
+}
+
+/**
+ * Decides whether a folder is safe to put tidied files into. It may not exist yet.
+ * Blocks system, app-settings and Fathom-data folders, and anything inside a project (a git repo, etc.).
+ */
+export async function checkDest(dest: string, opts: GuardOptions): Promise<RootCheck> {
+  const abs = resolve(dest);
+  const blocked = systemBlock(dest, abs, opts);
+  if (blocked) return blocked;
+  const project = await projectAt(abs, true);
+  if (project) {
+    return { root: dest, level: "block", message: `That folder is inside a ${project.why.toLowerCase()} (${basename(project.dir)}). Moving files into it could break the project.` };
+  }
+  return { root: dest, level: "ok" };
 }

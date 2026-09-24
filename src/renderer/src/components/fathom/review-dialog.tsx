@@ -6,7 +6,7 @@ import { toPlanItems } from "@shared/plan";
 import type { PlanItem, PreflightIssue, PreflightResult } from "@shared/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { cn, formatBytes, middleTruncate, plural } from "@/lib/utils";
+import { cn, formatBytes, middleTruncate, plural, errText } from "@/lib/utils";
 import { useApp } from "@/store/app";
 
 const GROUP_TITLE: Record<PreflightIssue["code"], string> = {
@@ -27,6 +27,7 @@ export function ReviewDialog({ open, onOpenChange, rows }: { open: boolean; onOp
   const startJob = useApp((s) => s.startJob);
   const [result, setResult] = useState<PreflightResult | null>(null);
   const [checking, setChecking] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
 
   const planned: PlanItem[] = useMemo(() => (destRoot ? toPlanItems(rows, destRoot) : []), [rows, destRoot]);
@@ -34,13 +35,14 @@ export function ReviewDialog({ open, onOpenChange, rows }: { open: boolean; onOp
   useEffect(() => {
     if (!open) return;
     setResult(null);
+    setFailure(null);
     setAck(false);
     if (sample || !destRoot) return;
     setChecking(true);
     window.fathom
       .preflight(planned, destRoot)
       .then(setResult)
-      .catch((err) => toast.error(err instanceof Error ? err.message : "Couldn't check the plan."))
+      .catch((err) => setFailure(errText(err, "Couldn't check the plan.")))
       .finally(() => setChecking(false));
   }, [open, planned, destRoot, sample]);
 
@@ -61,7 +63,7 @@ export function ReviewDialog({ open, onOpenChange, rows }: { open: boolean; onOp
       onOpenChange(false);
       startJob({ jobId, runId, kind: "apply", done: 0, total: result.items.length, current: "", destRoot });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't start moving files.");
+      toast.error(errText(err, "Couldn't start moving files."));
     }
   };
 
@@ -82,6 +84,11 @@ export function ReviewDialog({ open, onOpenChange, rows }: { open: boolean; onOp
           </p>
         ) : !destRoot ? (
           <p className="mt-4 rounded-lg bg-muted p-4 text-sm text-muted-foreground">Choose where the tidy folders should go first.</p>
+        ) : failure ? (
+          <p className="mt-4 flex items-start gap-2 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
+            <CircleAlert className="mt-0.5 size-4 shrink-0" />
+            <span>{failure}</span>
+          </p>
         ) : checking || !result ? (
           <div className="mt-6 h-1 overflow-hidden rounded-full bg-muted">
             <div className="indeterminate h-full w-1/3 rounded-full bg-sea/80" />

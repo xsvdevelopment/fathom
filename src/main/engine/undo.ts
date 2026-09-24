@@ -2,7 +2,7 @@ import { basename, dirname, extname, join } from "node:path";
 import type { JournalRecord, RunSummary, UndoSummary } from "@shared/types";
 import { resumePlan, runDir, type LoopState } from "./apply";
 import { friendlyError } from "./errors";
-import { exists, moveEntry, realFs, toLong, type Fs } from "./fsops";
+import { exists, moveEntry, realFs, sameEntry, toLong, type Fs } from "./fsops";
 import { JournalWriter, readJournal } from "./journal";
 import { readPlan, readUndoJournal } from "./runs";
 
@@ -86,7 +86,8 @@ export async function undoRun(runId: string, opts: UndoOptions): Promise<UndoSum
             continue;
           }
         }
-        const target = (await exists(fs, m.from)) ? restoredName(m.from) : m.from;
+        const occupied = (await exists(fs, m.from)) && !(await sameEntry(fs, m.to, m.from));
+        const target = occupied ? restoredName(m.from) : m.from;
         await fs.mkdir(toLong(dirname(target)), { recursive: true });
         await journal.append({ op: "intent", i: m.i, from: m.to, to: target, type: m.type }, true);
         await moveEntry(m.to, target, m.type, fs);

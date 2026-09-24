@@ -1,5 +1,5 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 
@@ -28,8 +28,8 @@ function readTree(root: string): Record<string, string> {
 }
 
 test("scan, move, and undo a real folder", async () => {
-  // Outside AppData on purpose: Fathom refuses to reorganize app-settings folders.
-  const root = join(process.cwd(), "test-results", `mess-${Date.now()}`);
+  // Outside AppData and outside this repo on purpose: Fathom refuses app-settings folders and folders inside projects.
+  const root = join(homedir(), ".fathom-e2e", `mess-${Date.now()}`);
   rmSync(root, { recursive: true, force: true });
   for (const [rel, content] of Object.entries(ORIGINAL)) {
     const p = join(root, ...rel.split("/"));
@@ -68,4 +68,9 @@ test("scan, move, and undo a real folder", async () => {
   expect(errors).toEqual([]);
   await app.close();
   rmSync(root, { recursive: true, force: true });
+  try {
+    rmdirSync(dirname(root));
+  } catch {
+    // another run still using it
+  }
 });

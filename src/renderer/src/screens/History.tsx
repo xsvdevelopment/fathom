@@ -6,7 +6,7 @@ import { TitleBar } from "@/components/fathom/titlebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { folderName, formatCount, formatWhen, middleTruncate, plural } from "@/lib/utils";
+import { folderName, formatCount, formatWhen, middleTruncate, plural, errText } from "@/lib/utils";
 import { useApp } from "@/store/app";
 
 const STATUS: Record<RunInfo["status"], { label: string; variant: "default" | "ok" | "deep" | "solid" }> = {
@@ -32,7 +32,7 @@ export function HistoryScreen() {
       const { jobId } = how === "undo" ? await window.fathom.undo(r.runId) : await window.fathom.finish(r.runId);
       startJob({ jobId, runId: r.runId, kind: how, done: 0, total: 0, current: "", destRoot: r.destRoot });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't start.");
+      toast.error(errText(err, "Couldn't start."));
     }
   };
 

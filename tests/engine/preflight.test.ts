@@ -43,11 +43,11 @@ describe("preflight", () => {
     expect(r.issues).toEqual([]);
   });
 
-  it("keeps a case-only rename of the same file", async () => {
-    const { root, plan } = await planFor({ "d/x.txt": "1" }, { "d/x.txt": "d/X.txt" });
+  it("counts a move that only changes letter case as already in place", async () => {
+    const { root, plan } = await planFor({ "work/x.txt": "1" }, { "work/x.txt": "Work/x.txt" });
     const r = await preflight(plan, root);
-    expect(r.items).toHaveLength(1);
-    expect(r.items[0]!.to).toBe(join(root, "d", "X.txt"));
+    expect(r.items).toEqual([]);
+    expect(r.unchanged).toBe(1);
   });
 
   it("skips files that changed or vanished since the scan", async () => {

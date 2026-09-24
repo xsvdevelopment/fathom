@@ -9,7 +9,7 @@ import { TitleBar } from "@/components/fathom/titlebar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { vetRoots } from "@/lib/pick";
-import { cn, folderName, formatCount, formatWhen, middleTruncate, plural } from "@/lib/utils";
+import { cn, folderName, formatCount, formatWhen, middleTruncate, plural, errText } from "@/lib/utils";
 import { useApp } from "@/store/app";
 
 export function Home() {
@@ -45,7 +45,7 @@ export function Home() {
       const { jobId } = how === "finish" ? await window.fathom.finish(run.runId) : await window.fathom.undo(run.runId);
       startJob({ jobId, kind: how, runId: run.runId, done: 0, total: 0, current: "", destRoot: run.destRoot });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't start.");
+      toast.error(errText(err, "Couldn't start."));
     }
   };
 

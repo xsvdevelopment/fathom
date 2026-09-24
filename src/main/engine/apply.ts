@@ -26,8 +26,8 @@ export function runDir(dataDir: string, runId: string): string {
   return join(dataDir, "runs", runId);
 }
 
-/** Creates missing ancestors of `dir` top-down, journaling each before creating it. */
-export async function ensureDir(dir: string, fs: Fs, journal: JournalWriter): Promise<void> {
+/** Creates missing ancestors of `dir` top-down, journaling each before creating it. Returns what it made. */
+export async function ensureDir(dir: string, fs: Fs, journal: JournalWriter): Promise<string[]> {
   const missing: string[] = [];
   let cur = dir;
   while (!(await exists(fs, cur))) {
@@ -36,10 +36,13 @@ export async function ensureDir(dir: string, fs: Fs, journal: JournalWriter): Pr
     if (up === cur) break;
     cur = up;
   }
+  const made: string[] = [];
   for (const d of missing.reverse()) {
     await journal.append({ op: "mkdir", path: d }, true);
     await fs.mkdir(toLong(d));
+    made.push(d);
   }
+  return made;
 }
 
 /** Removes folders emptied by the moves, deepest first, never touching roots or non-empty folders. */
@@ -102,8 +105,9 @@ async function moveLoop(items: PlanItem[], start: number, opts: ApplyOptions, fs
       break;
     }
     const it = items[i]!;
+    let made: string[] = [];
     try {
-      await ensureDir(dirname(it.to), fs, journal);
+      made = await ensureDir(dirname(it.to), fs, journal);
       await journal.append({ op: "intent", i, from: it.from, to: it.to, type: it.type }, true);
       await moveEntry(it.from, it.to, it.type, fs);
       if (opts.crashAfter === i + 1) throw Object.assign(new Error("Simulated crash"), { simulated: true });
@@ -113,7 +117,23 @@ async function moveLoop(items: PlanItem[], start: number, opts: ApplyOptions, fs
       st.movedFrom.push(it.from);
     } catch (err) {
       if ((err as { simulated?: boolean }).simulated) throw err;
+      if ((err as { code?: string }).code === "SOURCE_LEFT") {
+        // The copy is in place and the original moved aside; only clearing the leftovers failed.
+        const stat = await fs.lstat(toLong(it.to));
+        await journal.append({ op: "done", i, mtimeMs: stat.mtimeMs, size: stat.size }, true);
+        st.summary.moved += 1;
+        st.movedFrom.push(it.from);
+        st.summary.failed.push({
+          from: it.from,
+          to: it.to,
+          error: `Moved, but some of the original files couldn't be cleared. They're in ${(err as Error).message}`,
+        });
+        opts.onProgress?.(i + 1, items.length, it.to);
+        continue;
+      }
       const error = friendlyError(err);
+      // Don't leave behind empty folders that were made only for this item.
+      for (const d of [...made].reverse()) await fs.rmdir(toLong(d)).catch(() => {});
       await journal.append({ op: "fail", i, error }, true);
       st.summary.failed.push({ from: it.from, to: it.to, error });
     }

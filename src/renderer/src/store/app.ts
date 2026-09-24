@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { create } from "zustand";
+import { errText } from "@/lib/utils";
 import type { DupesDone, JobEvent, ScanDone } from "@shared/api";
 import { buildDemoItems, DEMO_ROOT } from "@shared/demo";
 import { proposeAll } from "@shared/layouts";
@@ -170,7 +171,7 @@ export const useApp = create<State>((set, get) => {
         set({ scan: { ...get().scan, jobId } });
       } catch (err) {
         set({ screen: "home" });
-        toast.error(err instanceof Error ? err.message : "Couldn't start the scan.");
+        toast.error(errText(err, "Couldn't start the scan."));
       }
     },
 
