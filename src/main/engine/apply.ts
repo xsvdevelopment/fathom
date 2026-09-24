@@ -93,6 +93,40 @@ export async function removeEmptied(
   return removed;
 }
 
+export type LoopState = { summary: RunSummary; movedFrom: string[] };
+
+async function moveLoop(items: PlanItem[], start: number, opts: ApplyOptions, fs: Fs, journal: JournalWriter, st: LoopState) {
+  for (let i = start; i < items.length; i += 1) {
+    if (opts.signal?.aborted) {
+      st.summary.cancelled = true;
+      break;
+    }
+    const it = items[i]!;
+    try {
+      await ensureDir(dirname(it.to), fs, journal);
+      await journal.append({ op: "intent", i, from: it.from, to: it.to, type: it.type }, true);
+      await moveEntry(it.from, it.to, it.type, fs);
+      if (opts.crashAfter === i + 1) throw Object.assign(new Error("Simulated crash"), { simulated: true });
+      const stat = await fs.lstat(toLong(it.to));
+      await journal.append({ op: "done", i, mtimeMs: stat.mtimeMs, size: stat.size });
+      st.summary.moved += 1;
+      st.movedFrom.push(it.from);
+    } catch (err) {
+      if ((err as { simulated?: boolean }).simulated) throw err;
+      const error = friendlyError(err);
+      await journal.append({ op: "fail", i, error }, true);
+      st.summary.failed.push({ from: it.from, to: it.to, error });
+    }
+    opts.onProgress?.(i + 1, items.length, it.to);
+  }
+}
+
+async function finish(opts: ApplyOptions, fs: Fs, journal: JournalWriter, st: LoopState): Promise<RunSummary> {
+  st.summary.removedDirs = await removeEmptied(st.movedFrom, opts.roots, fs, journal, join(runDir(opts.dataDir, opts.runId), "junk"));
+  await journal.append({ op: "end", at: Date.now(), summary: st.summary }, true);
+  return st.summary;
+}
+
 /** Executes a preflighted plan with a write-ahead journal so it can always be finished or undone. */
 export async function applyPlan(items: PlanItem[], opts: ApplyOptions): Promise<RunSummary> {
   const fs = opts.fs ?? realFs;
@@ -100,40 +134,26 @@ export async function applyPlan(items: PlanItem[], opts: ApplyOptions): Promise<
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "plan.json"), JSON.stringify({ destRoot: opts.destRoot, roots: opts.roots, items }));
   const journal = await JournalWriter.open(join(dir, "journal.jsonl"));
-  const summary: RunSummary = { runId: opts.runId, moved: 0, failed: [], removedDirs: 0, cancelled: false };
-
+  const st: LoopState = { summary: { runId: opts.runId, moved: 0, failed: [], removedDirs: 0, cancelled: false }, movedFrom: [] };
   try {
     await journal.append(
       { op: "start", runId: opts.runId, at: Date.now(), destRoot: opts.destRoot, roots: opts.roots, count: items.length },
       true,
     );
-    const movedFrom: string[] = [];
-    for (let i = 0; i < items.length; i += 1) {
-      if (opts.signal?.aborted) {
-        summary.cancelled = true;
-        break;
-      }
-      const it = items[i]!;
-      try {
-        await ensureDir(dirname(it.to), fs, journal);
-        await journal.append({ op: "intent", i, from: it.from, to: it.to, type: it.type }, true);
-        await moveEntry(it.from, it.to, it.type, fs);
-        if (opts.crashAfter === i + 1) throw Object.assign(new Error("Simulated crash"), { simulated: true });
-        const st = await fs.lstat(toLong(it.to));
-        await journal.append({ op: "done", i, mtimeMs: st.mtimeMs, size: st.size });
-        summary.moved += 1;
-        movedFrom.push(it.from);
-      } catch (err) {
-        if ((err as { simulated?: boolean }).simulated) throw err;
-        const error = friendlyError(err);
-        await journal.append({ op: "fail", i, error }, true);
-        summary.failed.push({ from: it.from, to: it.to, error });
-      }
-      opts.onProgress?.(i + 1, items.length, it.to);
-    }
-    summary.removedDirs = await removeEmptied(movedFrom, opts.roots, fs, journal, join(dir, "junk"));
-    await journal.append({ op: "end", at: Date.now(), summary }, true);
-    return summary;
+    await moveLoop(items, 0, opts, fs, journal, st);
+    return await finish(opts, fs, journal, st);
+  } finally {
+    await journal.close();
+  }
+}
+
+/** Continues an interrupted run from `start`, appending to its existing journal. */
+export async function resumePlan(items: PlanItem[], start: number, opts: ApplyOptions, st: LoopState): Promise<RunSummary> {
+  const fs = opts.fs ?? realFs;
+  const journal = await JournalWriter.open(join(runDir(opts.dataDir, opts.runId), "journal.jsonl"));
+  try {
+    await moveLoop(items, start, opts, fs, journal, st);
+    return await finish(opts, fs, journal, st);
   } finally {
     await journal.close();
   }

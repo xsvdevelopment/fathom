@@ -90,3 +90,19 @@ export type JournalRecord =
   | { op: "junk"; from: string; to: string }
   | { op: "rmdir"; path: string }
   | { op: "end"; at: number; summary: RunSummary };
+
+export type RunStatus = "applied" | "incomplete" | "undone" | "partially-undone";
+
+export type RunInfo = {
+  runId: string;
+  at: number;
+  destRoot: string;
+  roots: string[];
+  count: number;
+  moved: number;
+  failed: number;
+  status: RunStatus;
+  undoneAt?: number;
+};
+
+export type UndoSummary = { restored: number; skipped: { path: string; reason: string }[] };
