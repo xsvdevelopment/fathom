@@ -52,7 +52,7 @@ test("scan, move, and undo a real folder", async () => {
 
   const after = readTree(root);
   expect(after["Finance/Taxes/2021/tax-return-2021.pdf"]).toBe(ORIGINAL["New folder/New folder (2)/old/final/tax-return-2021.pdf"]);
-  expect(after["Code/my-app/.git/HEAD"]).toBe("ref: refs/heads/main");
+  expect(after["Code/old laptop/my-app/.git/HEAD"]).toBe("ref: refs/heads/main");
   expect(after["Inbox/Installers/ChromeSetup.exe"]).toBeDefined();
   expect(Object.keys(after).some((k) => k.startsWith("_Fathom Review/Duplicates/"))).toBe(true);
   expect(Object.keys(after).some((k) => k.startsWith("New folder/"))).toBe(false);
