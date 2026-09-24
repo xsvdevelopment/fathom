@@ -322,15 +322,22 @@ export function buildDemoItems(): Item[] {
     );
   }
 
-  // Exact duplicates: same name and size stands in for a content hash in the sample.
+  // The sample has no real bytes, so "Copy of x" / "x (1)" / same-named backups play the part of exact copies.
+  const base = (name: string) =>
+    name
+      .toLowerCase()
+      .replace(/^(copy of )+/, "")
+      .replace(/ \(\d+\)(?=\.[^.]+$)/, "");
+  const COPY_NAMES = new Set(["lease-signed.pdf", "budget-2024.xlsx", "tax-return-2019.pdf", "resume_final.pdf", "todo.txt", "resume_final_v8_use_this.pdf", "notes.txt"]);
   const keeper = new Map<string, Item>();
-  const sorted = [...items].sort((a, b) => a.rel.split("/").length - b.rel.split("/").length);
+  const sorted = [...items].sort((a, b) => a.rel.split("/").length - b.rel.split("/").length || a.rel.localeCompare(b.rel));
   for (const it of sorted) {
-    if (it.type !== "file") continue;
-    const key = `${it.name.toLowerCase()}|${it.size}`;
-    const k = keeper.get(key);
-    if (k) it.duplicateOf = k.id;
-    else keeper.set(key, it);
+    if (it.type !== "file" || !COPY_NAMES.has(base(it.name))) continue;
+    const k = keeper.get(base(it.name));
+    if (k) {
+      it.duplicateOf = k.id;
+      it.size = k.size;
+    } else keeper.set(base(it.name), it);
   }
   return items;
 }

@@ -8,11 +8,18 @@ const GENERIC = new Set([
   "latest", "current", "done", "finished", "submitted", "review", "to review", "sent", "received", "ignore this", "delete", "delete me", "test", "export", "exports", "output",
 ]);
 
+/** Filler words people use when nesting folders in frustration ("why/are/these/still/going"). */
+const STOPWORDS = new Set([
+  "the", "a", "an", "me", "my", "i", "you", "we", "it", "why", "what", "who", "are", "is", "was", "these", "those",
+  "this", "that", "still", "going", "down", "up", "inside", "another", "wait", "actually", "please", "read",
+  "really", "more", "one more", "here", "there", "and", "or", "of", "to", "in", "on", "so", "ok", "okay", "hmm",
+]);
+
 /** True when a folder name carries no meaning a person would file by. */
 export function isNoiseFolder(name: string): boolean {
   const n = name.trim().toLowerCase();
   if (n.length <= 1) return true;
-  if (GENERIC.has(n)) return true;
+  if (GENERIC.has(n) || STOPWORDS.has(n)) return true;
   if (/^new folder( \(\d+\))?$/.test(n)) return true;
   if (/^untitled( folder)?( \d+)?$/.test(n)) return true;
   if (/^copy of\b/.test(n) || /\bcopy( \d+)?$/.test(n)) return true;

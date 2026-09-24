@@ -1,3 +1,7 @@
+import "@fontsource-variable/figtree";
+import "@fontsource-variable/newsreader";
+import "./styles.css";
 import { createRoot } from "react-dom/client";
+import { App } from "./App";
 
-createRoot(document.getElementById("app")!).render(<p>Fathom</p>);
+createRoot(document.getElementById("app")!).render(<App />);

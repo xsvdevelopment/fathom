@@ -13,7 +13,7 @@ describe("buildDemoItems", () => {
 
   it("includes protected project folders and exact duplicates", () => {
     expect(items.filter((i) => i.type === "unit").map((i) => i.rel)).toContain("Projects/harbor-site");
-    expect(items.some((i) => i.duplicateOf)).toBe(true);
+    expect(items.filter((i) => i.duplicateOf).length).toBeGreaterThanOrEqual(5);
     expect(items.some((i) => i.rel.startsWith("Projects/harbor-site/"))).toBe(false);
   });
 });

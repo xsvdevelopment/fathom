@@ -22,6 +22,12 @@ const AREA_WORDS: [AreaName, RegExp][] = [
   ["Code", /^(code|dev|src|repos|repositories|github|gitlab)$/],
 ];
 
+/** Words in a file's own name that say which area it belongs to, used when its folders don't say. */
+const NAME_AREAS: [AreaName, RegExp][] = [
+  ["Personal", /\b(wedding|passport|visa|birth certificate|medical|insurance|vaccine|vaccination|lease|mortgage|recipes?|family|kids)\b/],
+  ["Studies", /\b(thesis|homework|assignment|syllabus|lecture|transcript|dissertation)\b/],
+];
+
 const words = (s: string) => s.toLowerCase().replace(/[_\-.]+/g, " ").trim();
 
 /** Ancestor folder names of an item, root first. */
@@ -95,6 +101,13 @@ export function classifySmart(item: Item): Proposal {
   if (item.kind === "ebook") return at("Library/Books", "E-book");
 
   const area = areaFor(dirs);
+  const stillImage = item.kind === "image" && !item.takenMs;
+  if (!area && (docLike || stillImage)) {
+    const hit = NAME_AREAS.find(([, re]) => re.test(name));
+    if (hit) return at(hit[0], `Looks ${hit[0].toLowerCase()} (“${item.name}”)`);
+  }
+  if ((docLike || stillImage) && /(^|\b)(scan|scanned)/.test(name)) return at("Documents/Scans", "Scanned document");
+
   const cameraPhoto = Boolean(item.takenMs) || !area || area.area === "Code";
   if ((item.kind === "image" || item.kind === "video") && cameraPhoto) {
     const place = nearestMeaningful(dirs);
