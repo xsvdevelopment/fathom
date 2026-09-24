@@ -43,7 +43,10 @@ const below = (rel: string) => {
     if (!SOURCE_PART.test(c) || !isDir(`${rel}/${c}`)) continue;
     const why = unitReason(c, [...kids.get(`${rel}/${c}`)!]);
     if (why && why !== "Program folder") return why;
-    if (/^(jni|src|cpp)$/.test(c) && [...kids.get(`${rel}/${c}`)!].filter((n) => kindOf(n) === "code").length >= 2) return "Source tree";
+    const src = `${rel}/${c}`;
+    const code = (d: string) => [...(kids.get(d) ?? [])].filter((n) => kindOf(n) === "code" && !isDir(`${d}/${n}`)).length;
+    const deep = code(src) + [...kids.get(src)!].reduce((n, s) => n + (isDir(`${src}/${s}`) ? code(`${src}/${s}`) : 0), 0);
+    if (/^(jni|src|cpp)$/.test(c) && deep >= 2) return "Source tree";
   }
   return null;
 };
@@ -94,3 +97,13 @@ for (const f of files) {
 }
 console.log("--- biggest loose-file folders (3 levels)");
 console.log([...spill].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, n]) => `${n}\t${k}`).join("\n"));
+
+// Every proposal that actually moves something, grouped by destination.
+const moving = items.filter((i) => (props.get(i.id)?.dest ?? "") !== i.rel.split("/").slice(0, -1).join("/"));
+console.log(`--- would move ${moving.length} of ${items.length}`);
+const grouped = new Map<string, string[]>();
+for (const i of moving) {
+  const d = props.get(i.id)!.dest || "(top)";
+  grouped.set(d, [...(grouped.get(d) ?? []), (i.type === "unit" ? "[U] " : "") + i.rel]);
+}
+for (const [d, l] of [...grouped].sort()) console.log(`## ${d}\n   ${l.slice(0, 8).join("\n   ")}${l.length > 8 ? `\n   … +${l.length - 8}` : ""}`);

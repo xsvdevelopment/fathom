@@ -18,6 +18,7 @@ describe("unitReason", () => {
     ["saved app data", ["prefs", "files", "databases"]],
     ["a coding-agent workspace", ["CLAUDE.md", "Client side", "Server side", "START_HERE.md"]],
     ["an agents workspace", ["AGENTS.md", "MGNSuite", "notes.md"]],
+    ["a downloaded repository", ["README.md", "LICENSE", "ccswitch.sh"]],
     ["an IL2CPP dump", ["dump.cs", "il2cpp.h", "script.json", "DummyDll"]],
   ])("keeps %s whole", (_, children) => {
     expect(unitReason("folder", children)).not.toBeNull();
@@ -27,6 +28,7 @@ describe("unitReason", () => {
     ["a manifest next to documents", ["AndroidManifest.xml", "notes.txt", "photo.jpg"]],
     ["a dump.cs among work notes", ["dump.cs", "notes.md", "log1.txt", "build.apk"]],
     ["plain folders", ["res", "lib", "assets"]],
+    ["a readme among photos", ["README.txt", "IMG_1.jpg", "IMG_2.jpg"]],
     ["one source-like folder among others", ["src", "Photos", "Taxes"]],
   ])("does not treat %s as a project", (_, children) => {
     expect(unitReason("folder", children)).toBeNull();

@@ -74,6 +74,21 @@ function skipMatcher(extra: string[]): (name: string) => boolean {
     name.startsWith(".") || name.startsWith("~$") || SKIP_NAMES.has(name.toLowerCase()) || HANDS_OFF.test(name) || patterns.some((p) => p.test(name));
 }
 
+/** Code files in a folder and its immediate subfolders ("jni/main.cpp", "jni/features/FeatureStore.cpp"). */
+async function codeFilesIn(abs: string, names: string[]): Promise<number> {
+  let n = names.filter((c) => kindOf(c) === "code").length;
+  for (const sub of names) {
+    if (n >= 2) break;
+    if (extOf(sub)) continue;
+    try {
+      n += (await readdir(join(abs, sub))).filter((c) => kindOf(c) === "code").length;
+    } catch {
+      // a file without an extension, or unreadable
+    }
+  }
+  return n;
+}
+
 /**
  * A project whose build file lives in its jni/src/app folder ("LGLModMenu/jni/Android.mk"): the folder
  * holding that source folder is the project root, so the build file and its neighbours stay together.
@@ -85,7 +100,7 @@ async function markedBelow(abs: string, children: string[], extraMarkers?: strin
       const inside = await readdir(join(abs, name));
       const why = unitReason(name, inside, extraMarkers);
       if (why && why !== "Program folder") return why;
-      if (/^(jni|src|cpp)$/.test(name) && inside.filter((c) => kindOf(c) === "code").length >= 2) return "Source tree";
+      if (/^(jni|src|cpp)$/.test(name) && (await codeFilesIn(join(abs, name), inside)) >= 2) return "Source tree";
     } catch {
       // not a folder, or unreadable
     }

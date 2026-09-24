@@ -92,6 +92,17 @@ describe("scan", () => {
     expect(items.map((i) => i.rel).sort()).toEqual(["Docs/src/essay.docx", "menufix/lgl_template_extended"]);
   });
 
+  it("treats a folder as the project root when its jni folder holds code in subfolders", async () => {
+    const root = await makeTree({
+      "b/LGLModMenu/mod.json": "{}",
+      "b/LGLModMenu/jni/features/FeatureStore.cpp": "x",
+      "b/LGLModMenu/jni/core/Entry.cpp": "x",
+      "b/notes.txt": "n",
+    });
+    const { items } = await scan([root], {});
+    expect(items.map((i) => i.rel).sort()).toEqual(["b/LGLModMenu", "b/notes.txt"]);
+  });
+
   it("keeps decompiled apps and unmarked code trees whole", async () => {
     const files: Record<string, string> = { "RE/apk1/apktool.yml": "v", "RE/apk1/smali/a/b.smali": "s", "RE/notes.txt": "n" };
     for (let i = 0; i < 25; i += 1) files[`RE/dex-disasm/com/x/C${i}.smali`] = "s";

@@ -63,7 +63,9 @@ export function unitReason(dirName: string, childNames: string[], extraMarkers: 
   if (lower.has("androidmanifest.xml") && childNames.some((c) => ANDROID_PART.test(c))) return "Android app";
   if (count(lower, SOURCE_DIRS) >= 2) return "Source tree";
   if (count(lower, APP_DATA_DIRS) >= 2) return "App data";
-  if (lower.has("dump.cs") &&(lower.has("il2cpp.h") || lower.has("script.json") || lower.has("dummydll"))) return "IL2CPP dump";
+  const has = (re: RegExp) => [...lower].some((c) => re.test(c));
+  if (has(/^readme(\.|$)/) && has(/^(license|licence|copying)(\.|$)/)) return "Code project";
+  if (lower.has("dump.cs") && (lower.has("il2cpp.h") || lower.has("script.json") || lower.has("dummydll"))) return "IL2CPP dump";
   for (const name of childNames) {
     for (const [re, why] of CHILD_MARKERS) if (re.test(name)) return why;
   }

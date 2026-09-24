@@ -4,6 +4,7 @@ import { KIND_LABEL } from "./kinds";
 import { parentPath, posixJoin } from "./paths";
 import { expandTemplate, matchRule } from "./rules";
 import type { Item, Layout, Proposal, Rule } from "./types";
+import { findWorkspaces, workspaceOf } from "./workspaces";
 
 export const REVIEW_DIR = "_Fathom Review";
 
@@ -43,10 +44,16 @@ function byLayout(item: Item, layout: Layout): Proposal {
 export function proposeAll(items: Item[], layout: Layout, rules: Rule[], now: number): Map<string, Proposal> {
   const active = rules.filter((r) => r.enabled);
   const out = new Map<string, Proposal>();
+  const ws = layout === "smart" ? findWorkspaces(items) : null;
   for (const item of items) {
     const rule = active.find((r) => matchRule(item, r, now));
+    const home = ws && workspaceOf(item, ws);
     if (rule) {
       out.set(item.id, { dest: expandTemplate(rule.target, item), reason: `Rule: ${rule.name}` });
+    } else if (home) {
+      out.set(item.id, { dest: parentPath(item.rel), reason: `Part of the “${home.split("/").pop()}” workspace — kept together` });
+    } else if (ws && item.type === "unit" && !parentPath(item.rel) && ws.roots.has(item.root)) {
+      out.set(item.id, { dest: "", reason: `Project (${item.unitReason ?? "marker found"}) — already at the top, left where it is` });
     } else if (item.duplicateOf && layout !== "inplace") {
       out.set(item.id, {
         dest: posixJoin(REVIEW_DIR, "Duplicates", parentPath(item.rel)),

@@ -6,7 +6,7 @@ import type { Item, Proposal } from "./types";
 export { itemDate } from "./dates";
 
 /** Folders that describe a category, not a project; skipped when picking a project name. */
-const STRUCTURAL = new Set([
+export const STRUCTURAL = new Set([
   "work", "clients", "client", "projects", "project", "school", "personal", "documents", "docs", "finance",
   "finances", "pictures", "photos", "photo", "images", "image", "dcim", "camera", "camera roll", "media",
   "home", "users", "invoices", "receipts", "statements", "scans", "videos", "video", "screenshots",
