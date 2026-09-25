@@ -17,7 +17,7 @@ describe("unitReason", () => {
     ["a pulled app data folder", ["files", "cache", "com.app-dump.cs"]],
     ["saved app data", ["prefs", "files", "databases"]],
     ["a coding-agent workspace", ["CLAUDE.md", "Client side", "Server side", "START_HERE.md"]],
-    ["an agents workspace", ["AGENTS.md", "MGNSuite", "notes.md"]],
+    ["an agents workspace", ["AGENTS.md", "Toolbox", "notes.md"]],
     ["a downloaded repository", ["README.md", "LICENSE", "ccswitch.sh"]],
     ["an IL2CPP dump", ["dump.cs", "il2cpp.h", "script.json", "DummyDll"]],
   ])("keeps %s whole", (_, children) => {

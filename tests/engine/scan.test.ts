@@ -71,36 +71,36 @@ describe("scan", () => {
 
   it("treats a folder as the project root when its jni or src folder holds the build file", async () => {
     const root = await makeTree({
-      "menufix/LGLModMenu/mod.json": "{}",
-      "menufix/LGLModMenu/jni/Android.mk": "x",
-      "menufix/LGLModMenu/jni/Main.cpp": "x",
-      "menufix/notes.txt": "n",
+      "gamekit/GameOverlay/mod.json": "{}",
+      "gamekit/GameOverlay/jni/Android.mk": "x",
+      "gamekit/GameOverlay/jni/Main.cpp": "x",
+      "gamekit/notes.txt": "n",
     });
     const { items } = await scan([root], {});
-    expect(items.map((i) => i.rel).sort()).toEqual(["menufix/LGLModMenu", "menufix/notes.txt"]);
-    expect(items.find((i) => i.rel === "menufix/LGLModMenu")).toMatchObject({ type: "unit", fileCount: 3 });
+    expect(items.map((i) => i.rel).sort()).toEqual(["gamekit/GameOverlay", "gamekit/notes.txt"]);
+    expect(items.find((i) => i.rel === "gamekit/GameOverlay")).toMatchObject({ type: "unit", fileCount: 3 });
   });
 
   it("treats a folder whose jni or src folder holds code as the project root", async () => {
     const root = await makeTree({
-      "menufix/lgl_template_extended/mod.json": "{}",
-      "menufix/lgl_template_extended/jni/main.cpp": "x",
-      "menufix/lgl_template_extended/jni/Hook.h": "x",
+      "gamekit/overlay_template_extended/mod.json": "{}",
+      "gamekit/overlay_template_extended/jni/main.cpp": "x",
+      "gamekit/overlay_template_extended/jni/Render.h": "x",
       "Docs/src/essay.docx": "d",
     });
     const { items } = await scan([root], {});
-    expect(items.map((i) => i.rel).sort()).toEqual(["Docs/src/essay.docx", "menufix/lgl_template_extended"]);
+    expect(items.map((i) => i.rel).sort()).toEqual(["Docs/src/essay.docx", "gamekit/overlay_template_extended"]);
   });
 
   it("treats a folder as the project root when its jni folder holds code in subfolders", async () => {
     const root = await makeTree({
-      "b/LGLModMenu/mod.json": "{}",
-      "b/LGLModMenu/jni/features/FeatureStore.cpp": "x",
-      "b/LGLModMenu/jni/core/Entry.cpp": "x",
+      "b/GameOverlay/mod.json": "{}",
+      "b/GameOverlay/jni/features/Settings.cpp": "x",
+      "b/GameOverlay/jni/core/Entry.cpp": "x",
       "b/notes.txt": "n",
     });
     const { items } = await scan([root], {});
-    expect(items.map((i) => i.rel).sort()).toEqual(["b/LGLModMenu", "b/notes.txt"]);
+    expect(items.map((i) => i.rel).sort()).toEqual(["b/GameOverlay", "b/notes.txt"]);
   });
 
   it("keeps decompiled apps and unmarked code trees whole", async () => {

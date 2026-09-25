@@ -44,7 +44,7 @@ describe("classifySmart", () => {
   });
 
   it.each([
-    ["reveng/MYS/smali/i/w2.smali"],
+    ["sidequest/App/smali/i/w2.smali"],
     ["qweqwe/apk/smali_classes2/w2/a.smali"],
     ["Taxes/2021/notes.bin"],
     ["Taxes/2021/lib/libil2cpp.so"],
@@ -57,8 +57,8 @@ describe("classifySmart", () => {
   });
 
   it("keeps a project beside its siblings under the folder that named them", () => {
-    expect(dest({ rel: "ncwd/MGNClean-Backup3", type: "unit" })).toBe("Code/ncwd");
-    expect(dest({ rel: "WorkDir2/OLD/MGNSuite", type: "unit" })).toBe("Code/WorkDir2");
+    expect(dest({ rel: "sandbox/Cleaner-Backup3", type: "unit" })).toBe("Code/sandbox");
+    expect(dest({ rel: "WorkDir2/OLD/Toolbox", type: "unit" })).toBe("Code/WorkDir2");
     expect(dest({ rel: "Projects/site", type: "unit" })).toBe("Code");
   });
 

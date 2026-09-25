@@ -33,9 +33,9 @@ describe("collapseCodeTrees", () => {
   });
 
   it("does not collapse a mixed folder, but does collapse the code tree inside it", () => {
-    const items = [...many("MOGO1/dump/com", 30, ".smali"), ...many("MOGO1", 20, ".txt"), ...many("MOGO1", 10, ".apk")];
+    const items = [...many("GAME1/dump/com", 30, ".smali"), ...many("GAME1", 20, ".txt"), ...many("GAME1", 10, ".apk")];
     const out = collapseCodeTrees(items);
-    expect(out.filter((i) => i.type === "unit").map((i) => i.rel)).toEqual(["MOGO1/dump"]);
+    expect(out.filter((i) => i.type === "unit").map((i) => i.rel)).toEqual(["GAME1/dump"]);
     expect(out).toHaveLength(31);
   });
 
