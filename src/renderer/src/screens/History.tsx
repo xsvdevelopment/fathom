@@ -104,7 +104,9 @@ export function HistoryScreen() {
           <DialogHeader>
             <DialogTitle>Undo this run?</DialogTitle>
             <DialogDescription>
-              {confirm ? `${plural(confirm.moved, "item")} will go back to where they were, and the empty folders Fathom cleared will come back.` : ""}
+              {confirm
+                ? `${plural(confirm.moved, "item")} will go back to where ${confirm.moved === 1 ? "it was" : "they were"}, and the empty folders Fathom cleared will come back.`
+                : ""}
             </DialogDescription>
           </DialogHeader>
           <p className="mt-3 text-sm text-muted-foreground">

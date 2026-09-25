@@ -109,8 +109,8 @@ function RunResult({ result, onOpen, onUndo, onDone }: { result: RunSummary; onO
         {plural(result.moved, "item")} moved{result.removedDirs ? `, ${plural(result.removedDirs, "empty folder")} cleared` : ""}.
       </h1>
       <p className="mt-3 text-muted-foreground">
-        Nothing was deleted. {result.cancelled ? "The rest stayed where they were. " : ""}If anything looks wrong, undo the whole run with one click
-        — now or later from History.
+        Nothing was deleted. {result.cancelled ? "The rest stayed where they were. " : ""}If anything looks wrong, you can undo the whole run
+        here or later from History.
       </p>
       {result.failed.length ? (
         <details className="mt-5 rounded-lg bg-muted/60 p-3" open={result.failed.length <= 5}>
@@ -149,9 +149,11 @@ function UndoResult({ result, onDone }: { result: UndoSummary; onDone: () => voi
     <div className="stagger-in">
       <p className="flex items-center gap-2 text-ok">
         <CircleCheck className="size-5" />
-        Undone
+        {result.cancelled ? "Stopped part-way" : "Undone"}
       </p>
-      <h1 className="mt-2 font-serif text-5xl tracking-tight">{plural(result.restored, "item")} back where they were.</h1>
+      <h1 className="mt-2 font-serif text-5xl tracking-tight">
+        {plural(result.restored, "item")} back where {result.restored === 1 ? "it was" : "they were"}.
+      </h1>
       {result.skipped.length ? (
         <details className="mt-5 rounded-lg bg-muted/60 p-3" open>
           <summary className="cursor-pointer text-sm text-warn">{plural(result.skipped.length, "item")} left where they are</summary>
@@ -166,9 +168,12 @@ function UndoResult({ result, onDone }: { result: UndoSummary; onDone: () => voi
             ))}
           </ul>
         </details>
-      ) : (
+      ) : result.cancelled ? null : (
         <p className="mt-3 text-muted-foreground">Every file and folder is back, including the empty folders Fathom had cleared.</p>
       )}
+      {result.cancelled ? (
+        <p className="mt-3 text-muted-foreground">The rest are still in the new layout. Open History to finish the undo.</p>
+      ) : null}
       <div className="mt-8">
         <Button onClick={onDone}>Back to start</Button>
       </div>

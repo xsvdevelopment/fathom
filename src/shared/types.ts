@@ -105,7 +105,7 @@ export type RunInfo = {
   undoneAt?: number;
 };
 
-export type UndoSummary = { restored: number; skipped: { path: string; reason: string }[] };
+export type UndoSummary = { restored: number; skipped: { path: string; reason: string }[]; cancelled?: boolean };
 
 export type Settings = {
   rules: Rule[];

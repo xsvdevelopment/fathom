@@ -49,6 +49,8 @@ export async function undoRun(runId: string, opts: UndoOptions): Promise<UndoSum
   const prior = await readUndoJournal(opts.dataDir, runId);
   if (prior.some((r) => r.op === "end")) throw new Error("This run was already undone.");
   const alreadyRestored = new Set(prior.flatMap((r) => (r.op === "done" ? [r.i] : [])));
+  // Where an earlier, interrupted undo was putting each item, in case its "done" never reached the disk.
+  const priorTarget = new Map(prior.flatMap((r) => (r.op === "intent" ? [[r.i, r.to] as const] : [])));
 
   const journal = await JournalWriter.open(join(dir, "undo.jsonl"));
   const result: UndoSummary = { restored: 0, skipped: [] };
@@ -73,6 +75,12 @@ export async function undoRun(runId: string, opts: UndoOptions): Promise<UndoSum
       n += 1;
       if (alreadyRestored.has(m.i)) continue;
       try {
+        const earlier = priorTarget.get(m.i);
+        if (!(await exists(fs, m.to)) && earlier && (await exists(fs, earlier))) {
+          await journal.append({ op: "done", i: m.i, mtimeMs: 0, size: 0 });
+          result.restored += 1;
+          continue;
+        }
         if (!(await exists(fs, m.to))) {
           result.skipped.push({ path: m.to, reason: "It's no longer where Fathom put it, so there was nothing to move back." });
           await journal.append({ op: "fail", i: m.i, error: "missing" }, true);
@@ -96,10 +104,11 @@ export async function undoRun(runId: string, opts: UndoOptions): Promise<UndoSum
       } catch (err) {
         result.skipped.push({ path: m.to, reason: friendlyError(err) });
         await journal.append({ op: "fail", i: m.i, error: friendlyError(err) }, true);
+      } finally {
+        opts.onProgress?.(n, moves.length, m.from);
       }
-      opts.onProgress?.(n, moves.length, m.from);
     }
-    if (opts.signal?.aborted) return result;
+    if (opts.signal?.aborted) return { ...result, cancelled: true };
 
     // 4. Remove folders the run created, if they're empty now.
     for (const r of [...recs].reverse()) {

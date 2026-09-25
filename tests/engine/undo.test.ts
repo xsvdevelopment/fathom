@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -59,6 +59,29 @@ describe("undoRun", () => {
     const tree = await readTree(root);
     expect(tree["a/b/y.txt"]).toBe("someone else");
     expect(tree["a/b/y (restored).txt"]).toBe("y");
+  });
+
+  it("says so when it was stopped part-way", async () => {
+    const { dataDir, plan, opts } = await setup();
+    await applyPlan(plan, opts);
+    const ac = new AbortController();
+    ac.abort();
+    const res = await undoRun("r1", { dataDir, signal: ac.signal });
+    expect(res.cancelled).toBe(true);
+    expect((await listRuns(dataDir))[0]!.status).toBe("partially-undone");
+  });
+
+  it("counts a file an interrupted undo already put back, even if its record was lost", async () => {
+    const { root, dataDir, plan, opts } = await setup();
+    await applyPlan(plan, opts);
+    // The undo moved y.txt back, then the power went out before its "done" record reached the disk.
+    await mkdir(join(root, "a", "b"), { recursive: true });
+    await rename(join(root, "Docs", "y.txt"), join(root, "a", "b", "y.txt"));
+    const intent = { op: "intent", i: 1, from: join(root, "Docs", "y.txt"), to: join(root, "a", "b", "y.txt"), type: "file" };
+    await writeFile(join(dataDir, "runs", "r1", "undo.jsonl"), `${JSON.stringify({ op: "start", runId: "r1", at: 0, destRoot: "", roots: [], count: 0 })}\n${JSON.stringify(intent)}\n`);
+    const res = await undoRun("r1", { dataDir });
+    expect(res).toEqual({ restored: 3, skipped: [] });
+    expect(await readTree(root)).toEqual(ORIGINAL);
   });
 
   it("can only undo a run once", async () => {
