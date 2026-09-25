@@ -25,12 +25,12 @@ describe("proposeAll", () => {
     expect(proposeAll([deep], "inplace", [], NOW).get(deep.id)!.dest).toBe("a/b/c/d");
   });
 
-  it("quarantines duplicates under _Fathom Review in every layout but keep", () => {
-    const dup = mk({ rel: "a/b/x.txt", duplicateOf: "k" });
+  it("quarantines duplicates under _Fathom Review in every layout but keep, minus the clutter", () => {
+    const dup = mk({ rel: "Taxes/old/New folder/x.txt", duplicateOf: "k" });
     for (const layout of ["smart", "type", "date", "flat2"] as const) {
-      expect(proposeAll([dup], layout, [], NOW).get(dup.id)!.dest).toBe("_Fathom Review/Duplicates/a/b");
+      expect(proposeAll([dup], layout, [], NOW).get(dup.id)!.dest).toBe("_Fathom Review/Duplicates/Taxes");
     }
-    expect(proposeAll([dup], "inplace", [], NOW).get(dup.id)!.dest).toBe("a/b");
+    expect(proposeAll([dup], "inplace", [], NOW).get(dup.id)!.dest).toBe("Taxes/old/New folder");
   });
 
   it("keeps units whole: Code in smart layouts, in place when flattening", () => {

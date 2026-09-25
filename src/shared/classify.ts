@@ -15,7 +15,7 @@ export const STRUCTURAL = new Set([
 
 type AreaName = "Work" | "Studies" | "Personal" | "Code";
 
-const AREA_WORDS: [AreaName, RegExp][] = [
+export const AREA_WORDS: [AreaName, RegExp][] = [
   ["Work", /^(work|works|job|jobs|office|clients?|freelance|business|company|career)$/],
   ["Studies", /^(school|university|uni|college|thesis|homework|course|courses|class|classes|study|studies|lectures?|coursework)$/],
   ["Personal", /^(personal|family|home|wedding|kids|travel|medical|health|recipes|house|car|pets?|garden)$/],
@@ -28,7 +28,7 @@ const NAME_AREAS: [AreaName, RegExp][] = [
   ["Studies", /\b(thesis|homework|assignment|syllabus|lecture|transcript|dissertation)\b/],
 ];
 
-const words = (s: string) => s.toLowerCase().replace(/[_\-.]+/g, " ").trim();
+export const words = (s: string) => s.toLowerCase().replace(/[_\-.]+/g, " ").trim();
 
 /** Ancestor folder names of an item, root first. */
 function dirsOf(item: Item): string[] {
@@ -39,7 +39,7 @@ function dirsOf(item: Item): string[] {
 }
 
 /** Camera-roll style folder names like "100APPLE" or "101_PANA". */
-const CAMERA_DIR = /^\d{3}[_ ]?[a-z]+$/i;
+export const CAMERA_DIR = /^\d{3}[_ ]?[a-z]+$/i;
 
 function isMeaningful(name: string): boolean {
   return !isNoiseFolder(name) && !CAMERA_DIR.test(name) && !STRUCTURAL.has(words(name));

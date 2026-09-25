@@ -51,14 +51,15 @@ describe("workspaces", () => {
     expect(plan([mk({ rel: "New folder/old/my-app", type: "unit" })])["New folder/old/my-app"]).toBe("Code");
   });
 
-  it("still sorts a personal folder that happens to hold one project", () => {
+  it("still sorts an old machine's dump that happens to hold one project", () => {
     const out = plan([
       mk({ rel: "old laptop/my-app", type: "unit" }),
       mk({ rel: "old laptop/Italy 2019/IMG_1.jpg" }),
       mk({ rel: "old laptop/Italy 2019/IMG_2.jpg" }),
       mk({ rel: "old laptop/tax-return-2019.pdf" }),
     ]);
-    expect(out["old laptop/my-app"]).toBe("Code/old laptop");
+    expect(out["old laptop/my-app"]).toBe("Code");
+    expect(out["old laptop/Italy 2019/IMG_1.jpg"]).toBe("Media/Italy 2019");
     expect(out["old laptop/tax-return-2019.pdf"]).toBe("Finance/Taxes/2019");
   });
 
