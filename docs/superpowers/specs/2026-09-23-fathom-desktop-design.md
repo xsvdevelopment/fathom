@@ -1,4 +1,4 @@
-# Fathom Desktop — Design
+# Fathom Desktop Design
 
 Date: 2026-09-23
 Status: approved in chat, pending written-spec review
@@ -14,7 +14,7 @@ better, and make it a standalone application they can use.
 - Electron + React, reusing the prototype's UI and classification ideas.
 
 **Assumptions:** single user, Windows 11 primary target, used on personal
-folders (Desktop, Downloads, Documents, old backups) that can hold 10k–200k files.
+folders (Desktop, Downloads, Documents, old backups) that can hold 10k to 200k files.
 
 **Success criteria:**
 1. The user can point Fathom at a real folder, review a proposed tree, apply it,
@@ -234,6 +234,6 @@ App icon from the prototype's mark. No auto-update, no telemetry.
 
 UI components (`studio`, `tree-pane`, `shelf-pane`, `plan-pane`, `depth-waveform`,
 `landing`, `mark`, `file-glyph`, `ui/*`), styling tokens, `kind.ts`, tree building,
-depth analysis, demo desk (kept as "Try with sample" — plan only, apply disabled).
+depth analysis, demo desk (kept as "Try with sample": plan only, apply disabled).
 Dropped: TanStack Start server, auth, database, PWA, multiplayer, zip export
 (replaced by optional "Export plan as CSV").

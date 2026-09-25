@@ -1,14 +1,22 @@
 # Fathom
 
 A Windows desktop app that tidies deeply nested folders. Point it at a messy folder: it measures how deep
-the mess goes, proposes a shallow tree that makes sense, lets you adjust it, and then moves the files —
-with a full undo.
+the mess goes, proposes a shallow tree that makes sense, lets you adjust it, and then moves the files.
+Every run can be undone.
 
-Grown from a browser prototype that could only export a zip of the plan. This version works on your real disk.
+## Install
+
+Fathom runs on Windows 10 and 11 (64-bit). Download one of these from the release page:
+
+- `Fathom-Setup-<version>.exe` installs Fathom for your user account, with Start menu and desktop shortcuts.
+- `Fathom-<version>-portable.exe` runs without installing.
+
+The builds aren't code-signed yet, so Windows SmartScreen may show "Windows protected your PC" the first time.
+Choose **More info**, then **Run anyway**.
 
 ## Using it
 
-1. **Choose folders…** (or drop folders on the window). Fathom reads them — scanning never changes anything.
+1. **Choose folders…** (or drop folders on the window). Fathom reads them. Scanning never changes anything.
 2. **Review the plan.** The left side is how things are now; the right side is the proposed layout, or every
    single move with the reason for it. Switch layouts (Smart, By type, By date, Max 3/2 deep, Keep in place),
    drag files onto folders, pin a destination, or mark things "Don't move". Ctrl+Z undoes plan edits.
@@ -60,3 +68,9 @@ npm run dist       # release/Fathom-Setup-<v>.exe and release/Fathom-<v>-portabl
 Layout: `src/shared` (pure logic: classification, rules, layouts, plan), `src/main/engine` (disk work:
 scan, duplicates, preflight, apply, journal, undo, settings), `src/main/ipc.ts` + `src/preload` (typed bridge),
 `src/renderer` (React UI). The window has no Node access; everything goes through `window.fathom`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+Built by XSV Development, with help from Claude.

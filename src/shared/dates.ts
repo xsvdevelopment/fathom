@@ -15,7 +15,7 @@ export function monthOf(ms: number): string {
   return String(new Date(ms).getMonth() + 1).padStart(2, "0");
 }
 
-/** Last plausible year (1990–2039) written in a string, e.g. "tax-return-2019" → 2019. */
+/** Last plausible year (1990 to 2039) written in a string, e.g. "tax-return-2019" → 2019. */
 export function yearIn(s: string): number | null {
   const found = [...s.matchAll(/(?:^|[^0-9])((?:19|20)\d{2})(?![0-9])/g)]
     .map((m) => Number(m[1]))

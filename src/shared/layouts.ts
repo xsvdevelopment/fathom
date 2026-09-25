@@ -59,7 +59,7 @@ export function proposeAll(items: Item[], layout: Layout, rules: Rule[], now: nu
     } else if (item.duplicateOf && layout !== "inplace") {
       out.set(item.id, {
         dest: posixJoin(REVIEW_DIR, "Duplicates", ...parentPath(item.rel).split("/").filter((d) => !isNoiseFolder(d))),
-        reason: "Exact duplicate — kept for review, never deleted",
+        reason: "Exact duplicate, set aside for review and never deleted",
       });
     } else if (placed) {
       out.set(item.id, { dest: placed.dest, reason: placed.reason });

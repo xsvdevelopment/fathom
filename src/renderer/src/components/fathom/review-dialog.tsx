@@ -11,12 +11,12 @@ import { useApp } from "@/store/app";
 
 const GROUP_TITLE: Record<PreflightIssue["code"], string> = {
   collision: "Will get a new name to avoid overwriting",
-  stale: "Changed since the scan — skipped",
-  missing: "No longer there — skipped",
+  stale: "Changed since the scan, skipped",
+  missing: "No longer there, skipped",
   "no-write": "Can't write to the destination",
   space: "Not enough space",
-  "path-too-long": "Path too long — skipped",
-  "into-itself": "Can't move inside itself — skipped",
+  "path-too-long": "Path too long, skipped",
+  "into-itself": "Can't move inside itself, skipped",
 };
 
 /** Checks the plan against the disk and asks for a clear yes before anything moves. */
@@ -138,7 +138,7 @@ export function ReviewDialog({ open, onOpenChange, rows }: { open: boolean; onOp
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-ok" />
               <span>
                 {plural(result.items.length, "item")} will move into <span className="font-mono text-xs">{middleTruncate(destRoot, 60)}</span>.
-                Nothing will be deleted — exact copies go to <span className="font-mono text-xs">_Fathom Review</span>. You can undo the
+                Nothing will be deleted. Exact copies go to <span className="font-mono text-xs">_Fathom Review</span>. You can undo the
                 whole run from History.
               </span>
             </p>

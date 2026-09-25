@@ -8,7 +8,7 @@ type DepthWaveformProps = {
   label?: string;
 };
 
-/** Bars of file counts per folder depth; red past 6 levels. Optional overlay shows the proposed tree. */
+/** Bars of file counts per folder depth; red from 6 levels down. Optional overlay shows the proposed tree. */
 export function DepthWaveform({ byDepth, proposedByDepth, onSelectDepth, compact = false, label = "Depth sounding" }: DepthWaveformProps) {
   const maxDepth = Math.max(0, byDepth.length - 1);
   const cols = Math.max(byDepth.length, proposedByDepth?.length ?? 0, 16);
@@ -18,7 +18,7 @@ export function DepthWaveform({ byDepth, proposedByDepth, onSelectDepth, compact
     <div className={cn("flex flex-col", compact ? "gap-1.5" : "gap-3")}>
       <div className="flex items-end justify-between gap-4">
         <p className="text-2xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
-        <p className="font-mono text-2xs text-muted-foreground tabular-nums">0 — {formatCount(maxDepth)} folders</p>
+        <p className="font-mono text-2xs text-muted-foreground tabular-nums">0 to {formatCount(maxDepth)} folders deep</p>
       </div>
       <div
         className={cn("flex items-end gap-px", compact ? "h-14" : "h-24")}

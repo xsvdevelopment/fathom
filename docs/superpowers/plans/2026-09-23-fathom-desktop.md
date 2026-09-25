@@ -6,7 +6,7 @@
 
 **Architecture:** Electron app built with electron-vite. `src/shared/` holds pure, fs-free logic (types, file kinds, noise heuristic, classification, layouts, trees, stats) used by both processes. `src/main/engine/` holds all disk work (scan, duplicates, preflight, apply, journal, undo, settings) behind a typed IPC surface exposed by `src/preload/`. `src/renderer/` is React + Tailwind 4, ported from the Grok prototype, with no Node access.
 
-**Tech Stack:** Electron, electron-vite, TypeScript (strict), React 19, Tailwind 4, zustand, @tanstack/react-virtual, Radix primitives, lucide-react, sonner, exifr, vitest, Playwright (`_electron`), electron-builder, @fontsource (Figtree, Newsreader — bundled, no network).
+**Tech Stack:** Electron, electron-vite, TypeScript (strict), React 19, Tailwind 4, zustand, @tanstack/react-virtual, Radix primitives, lucide-react, sonner, exifr, vitest, Playwright (`_electron`), electron-builder, @fontsource (Figtree, Newsreader, bundled, no network).
 
 **Spec:** `docs/superpowers/specs/2026-09-23-fathom-desktop-design.md`
 
@@ -25,11 +25,11 @@
 
 ## Review Focus
 
-1. **Case-only and odd names** (`Report.pdf` vs `report.PDF`, emoji, trailing spaces/dots, reserved names like `CON`) — collisions detected case-insensitively, generated folder names sanitized → tests in Task 2 and Task 6.
-2. **Organizing in place over an already-partly-organized folder** (a source file already sits at its target; a target folder already exists with unrelated files) — no-op moves skipped, unplanned occupants get ` (2)` suffixes, never overwritten → tests in Task 6.
-3. **Files in use / access denied during apply** — recorded as `fail`, run continues, undo skips them → test in Task 6 (injected fs error).
-4. **Huge scans (100k+ files)** — scan streams, renderer lists are virtualized, IPC sends entries in chunks → perf test in Task 4 (20k synthetic files under 10 s), virtualization in Task 12.
-5. **Dangerous roots** (`C:\`, `C:\Windows`, `Program Files`, `ProgramData`, `AppData`, the Fathom data dir) — refused or warned before scanning → test in Task 4.
+1. **Case-only and odd names** (`Report.pdf` vs `report.PDF`, emoji, trailing spaces/dots, reserved names like `CON`): collisions detected case-insensitively, generated folder names sanitized → tests in Task 2 and Task 6.
+2. **Organizing in place over an already-partly-organized folder** (a source file already sits at its target; a target folder already exists with unrelated files): no-op moves skipped, unplanned occupants get ` (2)` suffixes, never overwritten → tests in Task 6.
+3. **Files in use / access denied during apply**: recorded as `fail`, run continues, undo skips them → test in Task 6 (injected fs error).
+4. **Huge scans (100k+ files)**: scan streams, renderer lists are virtualized, IPC sends entries in chunks → perf test in Task 4 (20k synthetic files under 10 s), virtualization in Task 12.
+5. **Dangerous roots** (`C:\`, `C:\Windows`, `Program Files`, `ProgramData`, `AppData`, the Fathom data dir): refused or warned before scanning → test in Task 4.
 
 ---
 
@@ -102,7 +102,7 @@ export async function readTree(root: string): Promise<Record<string, string | nu
 - [ ] Step 5: A sanity test `tests/helpers/fixture.test.ts` asserting `readTree(await makeTree(x))` deep-equals `x`. Run `npm test` → PASS. `npm run typecheck` → clean.
 - [ ] Step 6: Commit `chore: scaffold electron app`.
 
-### Task 2: Shared basics — types, kinds, paths, noise
+### Task 2: Shared basics (types, kinds, paths, noise)
 
 **Files:** `src/shared/{types,kinds,paths,noise}.ts`, `tests/shared/{kinds,paths,noise}.test.ts`
 
@@ -217,7 +217,7 @@ dataDir(): string
 
 **Files:** `src/main/engine/dupes.ts`, `tests/engine/dupes.test.ts`
 
-**Produces:** `findDuplicates(items: Item[], opts: { onProgress?: (done: number, total: number) => void; signal?: AbortSignal }): Promise<Item[]>` — returns items with `hash`/`duplicateOf` set; units ignored.
+**Produces:** `findDuplicates(items: Item[], opts: { onProgress?: (done: number, total: number) => void; signal?: AbortSignal }): Promise<Item[]>` returns items with `hash`/`duplicateOf` set; units ignored.
 
 - [ ] Step 1: Tests: three identical 5 KB files at depths 1/3/5 → deepest two get `duplicateOf` = shallowest; same size different content → no dupes; files < 1 KB ignored; tie on depth → older mtime kept; 70 KB files differing only after 64 KB → not dupes.
 - [ ] Step 2: FAIL. Step 3: Implement (stream sha1; concurrency 4). Step 4: PASS. Step 5: Commit `feat(engine): content duplicate detection`.
@@ -301,7 +301,7 @@ reveal(absPath: string): Promise<void>; openPath(absPath: string): Promise<void>
 exportCsv(rows: string): Promise<string | null>;               // save dialog
 on(channel: string, cb: (payload: unknown) => void): () => void;
 ```
-- [ ] Main keeps last scan items in memory for dupes. Errors cross as `{ code, message }` via a `friendlyError(e)` mapper (`EBUSY/EPERM/EACCES/ENOENT/ENAMETOOLONG/ENOSPC/EXDEV`) — unit-test the mapper in `tests/engine/errors.test.ts`.
+- [ ] Main keeps last scan items in memory for dupes. Errors cross as `{ code, message }` via a `friendlyError(e)` mapper (`EBUSY/EPERM/EACCES/ENOENT/ENAMETOOLONG/ENOSPC/EXDEV`). Unit-test the mapper in `tests/engine/errors.test.ts`.
 - [ ] Commit `feat: typed IPC bridge`.
 
 ### Task 10: Renderer shell + Home
@@ -360,4 +360,4 @@ planItems(items): PlanItem[] // non-excluded items whose dest differs; absolute 
 ## Self-review notes
 
 - Spec coverage: scan/units/skips (T4), EXIF (T4), duplicates (T5), classification + rules + layouts (T3), studio features (T12), preflight/apply/journal/EXDEV/long paths/rmdir (T6), recovery (T7), undo (T7), settings + rules editor (T8, T14), errors (T9 mapper, T13 UI), testing (all), packaging (T15), sample desk plan-only (T10/T13), CSV export (T12).
-- Types used across tasks: `Item`, `Proposal`, `PlanItem`, `Rule`, `Settings`, `RunSummary`, `RunInfo`, `Layout` — defined in T2/T3/T6/T7/T8 and collected in `src/shared/types.ts`.
+- Types used across tasks: `Item`, `Proposal`, `PlanItem`, `Rule`, `Settings`, `RunSummary`, `RunInfo`, `Layout`, defined in T2/T3/T6/T7/T8 and collected in `src/shared/types.ts`.

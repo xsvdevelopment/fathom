@@ -74,7 +74,7 @@ function skipMatcher(extra: string[]): (name: string) => boolean {
     name.startsWith(".") || name.startsWith("~$") || SKIP_NAMES.has(name.toLowerCase()) || HANDS_OFF.test(name) || patterns.some((p) => p.test(name));
 }
 
-/** Code files in a folder and its immediate subfolders ("jni/main.cpp", "jni/features/FeatureStore.cpp"). */
+/** Code files in a folder and its immediate subfolders ("jni/main.cpp", "jni/features/Settings.cpp"). */
 async function codeFilesIn(abs: string, names: string[]): Promise<number> {
   let n = names.filter((c) => kindOf(c) === "code").length;
   for (const sub of names) {
@@ -90,7 +90,7 @@ async function codeFilesIn(abs: string, names: string[]): Promise<number> {
 }
 
 /**
- * A project whose build file lives in its jni/src/app folder ("LGLModMenu/jni/Android.mk"): the folder
+ * A project whose build file lives in its jni/src/app folder ("MyGame/jni/Android.mk"): the folder
  * holding that source folder is the project root, so the build file and its neighbours stay together.
  */
 async function markedBelow(abs: string, children: string[], extraMarkers?: string[]): Promise<string | null> {

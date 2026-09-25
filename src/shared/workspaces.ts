@@ -23,7 +23,7 @@ export type Workspaces = {
 /**
  * A workspace is a folder someone works in: it holds projects or code, and personal files (photos, PDFs,
  * office documents) are at most a quarter of what's in it. Everything inside a workspace stays together,
- * where it is — a folder of projects, notes, dumps and APKs is not split up by file type. The outermost
+ * where it is: a folder of projects, notes, dumps and APKs is not split up by file type. The outermost
  * such folder wins. Desktop, Downloads, Documents and other catch-all folders never count, and neither do
  * noise names ("New folder", "old"): a project buried in those still gets rescued.
  */
@@ -57,7 +57,7 @@ export function findWorkspaces(items: Item[]): Workspaces {
     const name = parts.at(-1)!;
     if (CONTAINERS.has(name.toLowerCase().trim())) continue;
     if (parts.some((_, i) => dirs.has(`${root}\0${parts.slice(0, i).join("/")}`))) continue;
-    // A noise-named folder ("qq", "NewWork - Copy") is still a workspace when it clearly holds work;
+    // A noise-named folder ("qq", "Projects - Copy") is still a workspace when it clearly holds work;
     // one lone project buried in "New folder/old" is not, so it still gets rescued.
     const enough = !isNoiseFolder(name) || t.units >= 2 || t.code >= 2;
     if (enough && qualifies(t)) dirs.add(key);

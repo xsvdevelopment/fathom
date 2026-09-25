@@ -78,8 +78,8 @@ function areaFor(dirs: string[]): { area: AreaName; project?: string } | null {
 export function classifySmart(item: Item): Proposal {
   const dirs = dirsOf(item);
   if (item.type === "unit") {
-    // Keep sibling projects together under the folder that grouped them, so "ncwd/MGNSuite" and
-    // "NewWork/MGNSuite" don't collide as "Code/MGNSuite (2)".
+    // Keep sibling projects together under the folder that grouped them, so "Clients/Website" and
+    // "Old laptop/Website" don't collide as "Code/Website (2)".
     const group = nearestMeaningful(dirs);
     return at(group ? `Code/${group}` : "Code", `Project folder (${item.unitReason ?? "marker found"})`);
   }
@@ -97,7 +97,7 @@ export function classifySmart(item: Item): Proposal {
       /\bdownloads?\b/.test(hay) ||
       dirs.length === 0;
     return setupLike
-      ? at("Inbox/Installers", "Installer — safe to review and delete later")
+      ? at("Inbox/Installers", "Installer, safe to review and delete later")
       : at("Inbox/Programs", "Program file on its own");
   }
 
@@ -148,7 +148,7 @@ export function classifySmart(item: Item): Proposal {
     case "presentation":
       return project ? at(`Documents/${project}`, `Document in “${project}”`) : at("Documents", "Loose document");
     case "archive":
-      return at("Inbox/Archives", "Archive — open it or file it");
+      return at("Inbox/Archives", "Archive to open or file");
     case "design":
     case "image":
       return at(project ? `Design/${project}` : "Design", "Design file");

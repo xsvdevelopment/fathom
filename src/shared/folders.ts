@@ -83,7 +83,7 @@ function mainArea(d: Dir): Area {
 }
 
 /**
- * Smart placement, folder first. A folder someone named ("Stems for Album", "Italy 2019", "reveng") is one
+ * Smart placement, folder first. A folder someone named ("Stems for Album", "Italy 2019", "scripts") is one
  * piece: everything in it stays together, in the same shape. What changes:
  *
  * - Named folders at the top of a scanned root stay where they are.
@@ -112,9 +112,9 @@ export function planFolders(items: Item[]): Map<string, FolderProposal> {
     const names = claimed(dest);
     const reason =
       how === "workspace"
-        ? `Part of the “${label}” workspace — kept together`
+        ? `Kept together with the “${label}” workspace`
         : how === "lifted"
-          ? `Rescued “${label}” from clutter — moved whole`
+          ? `Rescued “${label}” from clutter and moved it whole`
           : `Kept with “${label}”`;
     for (const it of d.items) {
       names.add(it.name.toLowerCase());
@@ -170,8 +170,8 @@ export function planFolders(items: Item[]): Map<string, FolderProposal> {
       if (it.type !== "unit") continue;
       if (top) {
         claimed("").add(it.name.toLowerCase());
-        out.set(it.id, { dest: "", reason: `Project (${it.unitReason ?? "marker found"}) — already at the top, left where it is` });
-      } else out.set(it.id, { dest: "Code", reason: `Project folder (${it.unitReason ?? "marker found"}) — rescued from clutter` });
+        out.set(it.id, { dest: "", reason: `Project (${it.unitReason ?? "marker found"}), already at the top so left where it is` });
+      } else out.set(it.id, { dest: "Code", reason: `Project folder (${it.unitReason ?? "marker found"}), rescued from clutter` });
     }
     // A folder right under "Users" is someone's account name, not a topic.
     // An app's own storage ("Resolve Project Backups/<uuid>/…") is one piece too, whatever it's called.

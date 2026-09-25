@@ -123,7 +123,7 @@ export function RulesScreen() {
           <div className="flex flex-col divide-y divide-border rounded-xl bg-card shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
             <Toggle
               label="Find exact copies"
-              hint="Compares file contents. Copies go to _Fathom Review/Duplicates — never deleted."
+              hint="Compares file contents. Copies go to _Fathom Review/Duplicates and are never deleted."
               checked={settings.findDuplicates}
               onChange={(v) => void save({ findDuplicates: v })}
             />
