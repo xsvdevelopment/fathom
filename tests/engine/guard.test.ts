@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { join } from "node:path";
-import { checkDest, checkRoot } from "../../src/main/engine/guard";
+import { checkDest, checkRoot, strayMove } from "../../src/main/engine/guard";
 import { makeTree } from "../helpers/fixture";
 
 const DATA = "C:\\Users\\me\\AppData\\Roaming\\Fathom";
@@ -57,5 +57,24 @@ describe.runIf(process.platform === "win32")("checkRoot", () => {
     expect((await checkDest(join(plain, "new", "folder"), { dataDir: DATA, home: HOME })).level).toBe("ok");
     expect((await checkDest("C:\\Windows\\Temp", { dataDir: DATA, home: HOME })).level).toBe("block");
     expect((await checkDest(DATA, { dataDir: DATA, home: HOME })).level).toBe("block");
+  });
+});
+
+describe.runIf(process.platform === "win32")("strayMove", () => {
+  const item = (from: string, to: string) => ({ id: "x", type: "file" as const, from, to, size: 1, mtimeMs: 1 });
+  const roots = ["C:\\Users\\me\\Desktop"];
+  const dest = "D:\\Tidy";
+
+  it("accepts moves from inside a scanned folder to inside the destination", () => {
+    expect(strayMove([item("C:\\Users\\me\\Desktop\\a\\x.txt", "D:\\Tidy\\Docs\\x.txt")], roots, dest)).toBeNull();
+  });
+
+  it.each([
+    ["C:\\Windows\\win.ini", "D:\\Tidy\\win.ini"],
+    ["C:\\Users\\me\\Desktop\\x.txt", "D:\\Elsewhere\\x.txt"],
+    ["C:\\Users\\me\\Desktop\\x.txt", "D:\\Tidy\\..\\x.txt"],
+    ["C:\\Users\\me\\Desktop", "D:\\Tidy\\Desktop"],
+  ])("refuses %s -> %s", (from, to) => {
+    expect(strayMove([item(from, to)], roots, dest)).toBe(from);
   });
 });

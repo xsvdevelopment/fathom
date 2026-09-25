@@ -1,6 +1,6 @@
 import { readdir, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, parse, relative, resolve } from "node:path";
-import type { RootCheck } from "@shared/types";
+import type { PlanItem, RootCheck } from "@shared/types";
 import { unitReason } from "./markers";
 
 export type { RootCheck } from "@shared/types";
@@ -9,6 +9,21 @@ const inside = (child: string, parent: string) => {
   const r = relative(parent.toLowerCase(), child.toLowerCase());
   return r === "" || (!!r && !r.startsWith("..") && !parse(r).root);
 };
+
+/** Strictly below `parent`, never `parent` itself. */
+const below = (child: string, parent: string) => {
+  const r = relative(resolve(parent).toLowerCase(), resolve(child).toLowerCase());
+  return !!r && !r.startsWith("..") && !isAbsolute(r);
+};
+
+/**
+ * The first move that reaches outside the scanned folders or the destination, or null when all stay in bounds.
+ * The window builds the plan; the main process still checks every path in it before touching the disk.
+ */
+export function strayMove(items: PlanItem[], roots: string[], destRoot: string): string | null {
+  const bad = items.find((i) => !roots.some((r) => below(i.from, r)) || !below(i.to, destRoot));
+  return bad ? bad.from : null;
+}
 
 export type GuardOptions = { dataDir: string; home: string; exists?: boolean; systemDrive?: string };
 

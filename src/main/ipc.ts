@@ -8,7 +8,7 @@ import type { Item, PlanItem, Settings } from "@shared/types";
 import { applyPlan, runDir } from "./engine/apply";
 import { findDuplicates } from "./engine/dupes";
 import { friendlyError } from "./engine/errors";
-import { checkDest, checkRoot } from "./engine/guard";
+import { checkDest, checkRoot, strayMove } from "./engine/guard";
 import { preflight } from "./engine/preflight";
 import { listRuns } from "./engine/runs";
 import { CancelledError, distinctRoots, scan } from "./engine/scan";
@@ -149,6 +149,7 @@ export function registerIpc() {
   ipcMain.handle("apply", async (_e, items: PlanItem[], destRoot: string, roots: string[]) => {
     await assertDest(destRoot);
     if ((await allowedRoots(roots)).length !== distinctRoots(roots).length) throw new Error("One of the scanned folders is no longer safe to change.");
+    if (strayMove(items, roots, destRoot)) throw new Error("The plan reaches outside the folders you picked, so Fathom won't run it.");
     const runId = newRunId();
     const job = startJob(
       "apply",

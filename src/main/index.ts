@@ -33,7 +33,7 @@ function createWindow() {
   });
   win.webContents.on("will-navigate", (e) => e.preventDefault());
   win.webContents.on("before-input-event", (_e, input) => {
-    if (input.type === "keyDown" && input.control && input.shift && input.key.toLowerCase() === "i") {
+    if (!app.isPackaged && input.type === "keyDown" && input.control && input.shift && input.key.toLowerCase() === "i") {
       win.webContents.toggleDevTools();
     }
   });
