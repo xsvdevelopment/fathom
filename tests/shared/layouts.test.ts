@@ -25,6 +25,47 @@ describe("proposeAll", () => {
     expect(proposeAll([deep], "inplace", [], NOW).get(deep.id)!.dest).toBe("a/b/c/d");
   });
 
+  it("leaves shortcuts where they are, unless their whole folder moves or a rule says otherwise", () => {
+    const lnk = mk({ rel: "Editor.lnk" });
+    const url = mk({ rel: "Games/Launcher.url" });
+    for (const layout of ["smart", "type", "date"] as const) {
+      const out = proposeAll([lnk, url], layout, [], NOW);
+      expect(out.get(lnk.id)).toEqual({ dest: "", reason: "Shortcut, left where it is" });
+      expect(out.get(url.id)!.dest).toBe("Games");
+    }
+    // Two shortcuts to the same thing are each where someone wants one.
+    const twin = mk({ rel: "Games/Launcher copy.url", duplicateOf: "k" });
+    expect(proposeAll([url, twin], "smart", [], NOW).get(twin.id)!.dest).toBe("Games");
+    const deep = mk({ rel: "a/b/c/d/Tool.lnk" });
+    expect(proposeAll([deep], "flat2", [], NOW).get(deep.id)!.dest).toBe("a/b");
+    const r: Rule = { id: "1", name: "Links", enabled: true, when: { exts: ["lnk"] }, target: "Shortcuts" };
+    expect(proposeAll([lnk], "smart", [r], NOW).get(lnk.id)!.dest).toBe("Shortcuts");
+  });
+
+  it("keeps a saved web page and its _files folder together", () => {
+    const page = mk({ rel: "Downloads stuff/Great Recipe.html" });
+    const css = mk({ rel: "Downloads stuff/Great Recipe_files/style.css" });
+    const img = mk({ rel: "Downloads stuff/Great Recipe_files/img/hero.jpg" });
+    const dupe = mk({ rel: "Downloads stuff/Great Recipe_files/jquery.js", duplicateOf: "k" });
+    const other = mk({ rel: "Downloads stuff/notes_files/readme.txt" });
+    const out = proposeAll([page, css, img, dupe, other], "smart", [], NOW);
+    const home = out.get(page.id)!.dest;
+    expect(out.get(css.id)).toEqual({ dest: `${home}/Great Recipe_files`, reason: "Kept with the saved page “Great Recipe.html”" });
+    expect(out.get(img.id)!.dest).toBe(`${home}/Great Recipe_files/img`);
+    expect(out.get(dupe.id)!.dest).toBe(`${home}/Great Recipe_files`);
+    expect(out.get(other.id)!.reason).not.toContain("saved page");
+
+    // At the top of a folder the scripts look like a code workspace; they still follow their page.
+    const top = mk({ rel: "Article.html" });
+    const scripts = ["a.js", "b.js", "c.css"].map((n) => mk({ rel: `Article_files/${n}` }));
+    const flat = proposeAll([top, ...scripts], "smart", [], NOW);
+    expect(flat.get(top.id)!.dest).toBe("Documents/Web pages");
+    for (const s of scripts) expect(flat.get(s.id)!.dest).toBe("Documents/Web pages/Article_files");
+
+    const r: Rule = { id: "1", name: "Styles", enabled: true, when: { exts: ["css"] }, target: "Styles" };
+    expect(proposeAll([page, css], "smart", [r], NOW).get(css.id)!.dest).toBe("Styles");
+  });
+
   it("quarantines duplicates under _Fathom Review in every layout but keep, minus the clutter", () => {
     const dup = mk({ rel: "Taxes/old/New folder/x.txt", duplicateOf: "k" });
     for (const layout of ["smart", "type", "date", "flat2"] as const) {

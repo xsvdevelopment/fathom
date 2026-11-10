@@ -41,6 +41,8 @@ Choose **More info**, then **Run anyway**.
   app bundles and the like are never split. Fathom refuses to reorganize *inside* one.
 - **System folders are off limits.** Windows, Program Files, ProgramData and AppData are refused.
 - **Links are never followed** (symlinks, junctions).
+- **Shortcuts stay put.** A `.lnk` or `.url` is only useful where you left it, so sorting never sweeps your
+  desktop shortcuts into a folder. They move only with a folder that moves whole, or by a rule you wrote.
 - **Undo is careful.** Files you edited after a run are left where they are; if something now occupies a
   file's old spot, the file comes back beside it as `name (restored).ext`.
 - **Moves across drives** are copied, verified by size and SHA-1, and only then removed from the source.

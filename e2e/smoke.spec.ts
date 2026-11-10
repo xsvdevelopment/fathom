@@ -6,6 +6,10 @@ import { _electron as electron, expect, test } from "@playwright/test";
 const ORIGINAL: Record<string, string> = {
   "New folder/New folder (2)/old/final/tax-return-2021.pdf": "t".repeat(4000),
   "Downloads/ChromeSetup.exe": "e".repeat(4000),
+  "Downloads/Editor.lnk": "l".repeat(400),
+  "Downloads/Great Recipe.html": "<link href='Great Recipe_files/style.css'>",
+  "Downloads/Great Recipe_files/style.css": "body{}",
+  "Downloads/Great Recipe_files/app.js": "1",
   "Downloads/Screenshot 2024-05-01 at 10.00.png": "s".repeat(4000),
   "Downloads/invoice-7781.pdf": "i".repeat(4000),
   "Downloads/copy/invoice-7781.pdf": "i".repeat(4000),
@@ -54,6 +58,11 @@ test("scan, move, and undo a real folder", async () => {
   expect(after["Finance/Taxes/2021/tax-return-2021.pdf"]).toBe(ORIGINAL["New folder/New folder (2)/old/final/tax-return-2021.pdf"]);
   expect(after["Code/my-app/.git/HEAD"]).toBe("ref: refs/heads/main");
   expect(after["Inbox/Installers/ChromeSetup.exe"]).toBeDefined();
+  // A shortcut stays where it was left, and a saved page keeps its files beside it.
+  expect(after["Downloads/Editor.lnk"]).toBeDefined();
+  expect(after["Documents/Web pages/Great Recipe.html"]).toBeDefined();
+  expect(after["Documents/Web pages/Great Recipe_files/style.css"]).toBe("body{}");
+  expect(after["Documents/Web pages/Great Recipe_files/app.js"]).toBe("1");
   expect(Object.keys(after).some((k) => k.startsWith("_Fathom Review/Duplicates/"))).toBe(true);
   expect(Object.keys(after).some((k) => k.startsWith("New folder/"))).toBe(false);
 

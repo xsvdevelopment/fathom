@@ -37,6 +37,7 @@ const FINANCE_NAMES: [string, RegExp][] = [
   ["Statements", /\b(statements?|bank)\b/],
   ["Bills", /\bbills?\b/],
   ["Budgets", /\b(budgets?|expenses)\b/],
+  ["Records", /\b(ledgers?|payouts?|transactions)\b/],
 ];
 
 /** Phrases that use a money word for something else ("statement of purpose", "bill of materials"). */
@@ -65,7 +66,7 @@ export const CAMERA_DIR = /^\d{3}[_ ]?[a-z]+$/i;
  * a topic, so a file is never filed by one, and on a re-assess their contents get a second look.
  */
 export const BUCKET =
-  /^((photos|videos?|images|screenshots|audio|taxes|invoices|receipts|statements|payslips|bills|budgets|records|notes|manuals|scans|archives|installers|programs|unsorted|loose files|data|fonts|books|resume)( (19|20)\d{2})?|(19|20)\d{2})$/;
+  /^((photos|videos?|images|screenshots|audio|taxes|invoices|receipts|statements|payslips|bills|budgets|records|notes|manuals|scans|archives|installers|programs|unsorted|loose files|web pages|data|fonts|books|resume)( (19|20)\d{2})?|(19|20)\d{2})$/;
 
 export function isMeaningful(name: string): boolean {
   const w = words(name);
@@ -222,6 +223,8 @@ export function classifyLoose(item: Item): Loose {
     case "data":
       return at("Code/Data", "Data file");
     case "code":
+      // An HTML file with no project around it is a page someone saved to read, not source.
+      if (!project && /^\.html?$/.test(item.ext)) return at("Documents/Web pages", "Saved web page", { weak: true });
       return at(project ? `Code/${project}` : "Code/Loose files", "Loose code file");
     default:
       return project

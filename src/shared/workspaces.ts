@@ -1,5 +1,6 @@
 import { STRUCTURAL } from "./classify";
 import { isNoiseFolder } from "./noise";
+import { findSavedPages } from "./savedpages";
 import type { Item } from "./types";
 
 /** Folders that collect everything; never a workspace even when code lands in them. */
@@ -37,7 +38,10 @@ export function findWorkspaces(items: Item[]): Workspaces {
     else if (it.kind === "code") t.code += 1;
     if (isPersonal(it)) t.personal += 1;
   };
+  // A saved web page brings its own scripts and styles; they are not work anyone is doing.
+  const saved = findSavedPages(items);
   for (const it of items) {
+    if (saved.pages.has(it.id) || saved.pageOf.has(it.id)) continue;
     const parts = it.rel.split("/");
     bump(`${it.root}\0`, it);
     for (let d = 1; d < parts.length; d += 1) bump(`${it.root}\0${parts.slice(0, d).join("/")}`, it);

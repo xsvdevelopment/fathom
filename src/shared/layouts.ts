@@ -1,10 +1,11 @@
 import { classifyLoose, classifySmart, type Loose } from "./classify";
 import { planFolders, type FolderOptions } from "./folders";
 import { itemDate, monthOf, yearOf } from "./dates";
-import { KIND_LABEL } from "./kinds";
+import { KIND_LABEL, isShortcut } from "./kinds";
 import { isNoiseFolder } from "./noise";
 import { parentPath, posixJoin } from "./paths";
 import { expandTemplate, matchRule } from "./rules";
+import { findSavedPages } from "./savedpages";
 import { settleLoose } from "./settle";
 import type { Item, Layout, Proposal, Rule } from "./types";
 
@@ -59,14 +60,16 @@ export function proposeAll(
   const folders = layout === "smart" ? planFolders(items, opts) : null;
   const loose: { item: Item; placed: Loose }[] = [];
   const kept = new Set<string>();
+  const fixed = new Set<string>();
   for (const item of items) {
     const rule = active.find((r) => matchRule(item, r, now));
     const placed = folders?.get(item.id);
     if (rule) {
+      fixed.add(item.id);
       out.set(item.id, { dest: expandTemplate(rule.target, item), reason: `Rule: ${rule.name}` });
     } else if (placed?.firm) {
       out.set(item.id, { dest: placed.dest, reason: placed.reason });
-    } else if (item.duplicateOf && layout !== "inplace") {
+    } else if (item.duplicateOf && layout !== "inplace" && !isShortcut(item.name)) {
       out.set(item.id, {
         dest: posixJoin(REVIEW_DIR, "Duplicates", ...parentPath(item.rel).split("/").filter((d) => !isNoiseFolder(d))),
         reason: "Exact duplicate, set aside for review and never deleted",
@@ -75,6 +78,9 @@ export function proposeAll(
       out.set(item.id, { dest: placed.dest, reason: placed.reason });
       // A project at the top is "kept" in the root itself; that is not a folder to file things into.
       if (item.type === "file") kept.add(placed.dest);
+    } else if (item.type === "file" && isShortcut(item.name) && (layout === "smart" || layout === "type" || layout === "date")) {
+      // Sorting by kind or date would sweep a desktop's shortcuts into a catch-all folder.
+      out.set(item.id, { dest: parentPath(item.rel), reason: "Shortcut, left where it is" });
     } else if (layout === "smart") {
       // Held back so the map keeps scan order; filled in below.
       out.set(item.id, { dest: "", reason: "" });
@@ -84,5 +90,23 @@ export function proposeAll(
     }
   }
   for (const [id, p] of settleLoose(loose, [...kept])) out.set(id, p);
+  if (layout === "smart" || layout === "type" || layout === "date") keepSavedPagesWhole(items, out, fixed);
   return out;
+}
+
+/**
+ * A saved page's "_files" folder goes wherever its page goes, in the same shape, even when a file inside it
+ * would sort elsewhere, is a duplicate of one in another saved page, or looks like a code workspace.
+ * `fixed` are the placements a user rule made; those stand.
+ */
+function keepSavedPagesWhole(items: Item[], out: Map<string, Proposal>, fixed: Set<string>): void {
+  const { pageOf } = findSavedPages(items);
+  if (!pageOf.size) return;
+  for (const it of items) {
+    const page = pageOf.get(it.id);
+    if (!page || fixed.has(it.id)) continue;
+    const pageDir = parentPath(page.rel);
+    const inside = parentPath(it.rel).slice(pageDir ? pageDir.length + 1 : 0);
+    out.set(it.id, { dest: posixJoin(out.get(page.id)!.dest, inside), reason: `Kept with the saved page “${page.name}”` });
+  }
 }

@@ -1,3 +1,4 @@
+import type { Stats } from "node:fs";
 import { lstat, opendir, readdir } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { kindOf } from "@shared/kinds";
@@ -108,33 +109,46 @@ async function markedBelow(abs: string, children: string[], extraMarkers?: strin
   return null;
 }
 
+/** How many stat calls run at once. One at a time, a project with a node_modules takes minutes to size. */
+const STAT_BATCH = 48;
+/** How many folders of a unit are read at once while sizing it. */
+const DIR_BATCH = 8;
+
+/** Runs `fn` over `list` a batch at a time, results in the same order. */
+async function inBatches<T, R>(list: T[], fn: (t: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < list.length; i += STAT_BATCH) {
+    out.push(...(await Promise.all(list.slice(i, i + STAT_BATCH).map(fn))));
+  }
+  return out;
+}
+
 /** Counts files and bytes under a unit folder without following links. Stops counting at `cap` files. */
 async function measure(abs: string, cap = 50_000): Promise<{ files: number; bytes: number }> {
   let files = 0;
   let bytes = 0;
   const stack = [abs];
-  while (stack.length && files < cap) {
-    const dir = stack.pop()!;
+  const one = async (dir: string) => {
     let entries;
     try {
       entries = await readdir(dir, { withFileTypes: true });
     } catch {
-      continue;
+      return;
     }
+    const here: string[] = [];
     for (const e of entries) {
       if (e.isSymbolicLink()) continue;
       const p = join(dir, e.name);
       if (e.isDirectory()) stack.push(p);
-      else if (e.isFile()) {
-        files += 1;
-        try {
-          bytes += (await lstat(p)).size;
-        } catch {
-          // unreadable file inside a unit: still moves with it
-        }
-      }
+      else if (e.isFile()) here.push(p);
     }
-  }
+    files += here.length;
+    // An unreadable file inside a unit still moves with it; it just adds nothing to the size.
+    const sizes = await inBatches(here, (p) => lstat(p).then((st) => st.size, () => 0));
+    for (const n of sizes) bytes += n;
+  };
+  // A few folders at a time: a dependency tree is thousands of small folders, and one by one is the slow part.
+  while (stack.length && files < cap) await Promise.all(stack.splice(-DIR_BATCH).map(one));
   return { files, bytes };
 }
 
@@ -187,6 +201,15 @@ export async function scan(roots: string[], opts: ScanOptions): Promise<ScanResu
       }
       const kept = names.filter((n) => !skip(n.name) && !(rel === "" && n.dir && SYSTEM_TOP.has(n.name.toLowerCase())));
 
+      // Stat this folder's files together; the loop below then reads the answers in order.
+      const fileStats = new Map<string, Stats | Error>(
+        await inBatches(
+          kept.filter((n) => n.file),
+          (n): Promise<[string, Stats | Error]> =>
+            lstat(join(abs, n.name)).then((st) => [n.name, st], (err: Error) => [n.name, err]),
+        ),
+      );
+
       for (const n of kept) {
         const childAbs = join(abs, n.name);
         const childRel = rel ? `${rel}/${n.name}` : n.name;
@@ -227,7 +250,8 @@ export async function scan(roots: string[], opts: ScanOptions): Promise<ScanResu
           }
         } else if (n.file) {
           try {
-            const st = await lstat(childAbs);
+            const st = fileStats.get(n.name)!;
+            if (st instanceof Error) throw st;
             items.push({
               id: itemId(root, childRel),
               type: "file",
