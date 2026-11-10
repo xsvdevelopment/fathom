@@ -15,7 +15,7 @@ describe("classifySmart", () => {
     ["Documents/New folder/W2_2021.pdf", "Finance/Taxes/2021"],
     ["Documents/Taxes/2018/1099-misc.pdf", "Finance/Taxes/2018"],
     ["Work/Clients/Acme/final/invoice-001.pdf", "Finance/Acme"],
-    ["Downloads/bank-statement-jan.pdf", "Finance/Records"],
+    ["Downloads/bank-statement-jan.pdf", "Finance/Statements"],
     ["Desktop/old/Resume_2024.docx", "Work/Resume"],
     ["Pictures/Italy 2019/IMG_1.jpg", "Media/Italy 2019"],
     ["Pictures/2019/lisbon/IMG_1.jpg", "Media/lisbon 2019"],
@@ -35,9 +35,32 @@ describe("classifySmart", () => {
     ["Downloads/Medical-insurance-card.pdf", "Personal"],
     ["Documents/Work/Clients/Acme/2023/Q1/deliverables/recording-call.mp4", "Work/Acme"],
     ["Documents/Work/Clients/Acme/2022/Q2/deliverables/invoice-001.pdf", "Finance/Acme"],
-    ["old macbook backup/Users/alex/Desktop/notes.txt", "Documents"],
+    ["old macbook backup/Users/alex/Desktop/notes.txt", "Documents/Notes"],
     ["Pictures/iPhone Backup/DCIM/100APPLE/IMG_3001.HEIC", "Media/Photos 2022"],
+    ["Downloads/invoice_stripe_20481.pdf", "Finance/Invoices"],
+    ["Downloads/electric bill march.pdf", "Finance/Bills"],
+    ["Downloads/budget-2024.xlsx", "Finance/Budgets"],
+    ["Downloads/Offer_Letter.pdf", "Work"],
+    ["Downloads/Cover Letter.docx", "Work/Resume"],
+    ["Downloads/manual-scanner.pdf", "Documents/Manuals"],
+    ["Downloads/figma-export.png", "Media/Images"],
+    ["Downloads/logo.svg", "Design"],
+    ["Downloads/PXL_20240101_120000.jpg", "Media/Photos 2022"],
+    ["Downloads/funny-cat.mp4", "Media/Videos 2022"],
   ])("%s → %s", (rel, want) => expect(dest({ rel })).toBe(want));
+
+  it.each([
+    ["Downloads/statement of purpose.docx"],
+    ["Downloads/bill of materials.xlsx"],
+    ["Downloads/food bank flyer.pdf"],
+    ["Downloads/river bank.jpg"],
+  ])("doesn't take a money word out of context: %s", (rel) => {
+    expect(dest({ rel })).not.toMatch(/^Finance/);
+  });
+
+  it.each([["Downloads/scanner manual.pdf"], ["Downloads/Scandinavia trip.jpg"]])("doesn't read a scan into %s", (rel) => {
+    expect(dest({ rel })).not.toBe("Documents/Scans");
+  });
 
   it("uses the EXIF date for phone photos in noise folders", () => {
     expect(dest({ rel: "DCIM/100APPLE/IMG_2.HEIC", takenMs: Date.UTC(2021, 5, 1) })).toBe("Media/Photos 2021");

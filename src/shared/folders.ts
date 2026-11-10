@@ -1,4 +1,4 @@
-import { AREA_WORDS, CAMERA_DIR, words } from "./classify";
+import { AREA_WORDS, BUCKET, CAMERA_DIR, words } from "./classify";
 import { yearIn } from "./dates";
 import { isBlankFolder, isNoiseFolder } from "./noise";
 import { parentPath, posixJoin, sanitizeSegment } from "./paths";
@@ -49,6 +49,20 @@ const isCameraDir = (name: string) => CAMERA_DIR.test(name) || /^(dcim|camera|ca
 /** A folder someone named for what's in it: it moves as one piece. */
 const isNamed = (name: string) => !isNoiseFolder(name) && !isCameraDir(name) && !MACHINE_ID.test(name);
 
+/** Top folders Fathom makes itself. On a re-assess they are shelves to look through again, not folders to keep. */
+const SHELVES = new Set(["documents", "media", "finance", "work", "personal", "studies", "code", "design", "library", "inbox"]);
+
+/** Shelves that say what kind of file is inside. A folder on the wrong one of these can be moved to the right one. */
+const KIND_SHELVES = new Set(["documents", "media", "design", "code", "inbox"]);
+
+export type FolderOptions = {
+  /**
+   * Look again at a tree Fathom already sorted: files on its shelves are judged afresh, and a folder that sits
+   * on the wrong shelf for what it holds is moved to the right one. Folders the person named still move whole.
+   */
+  reassess?: boolean;
+};
+
 function buildTrees(items: Item[]): Dir[] {
   const byKey = new Map<string, Dir>();
   const roots: Dir[] = [];
@@ -93,8 +107,11 @@ function mainArea(d: Dir): Area {
  *   no two names would then clash.
  *
  * Files with no named folder above them are left out of the result: they're loose and sort one by one.
+ *
+ * With `reassess`, Fathom's own shelves at the top ("Media", "Documents", "Inbox") count as clutter too, so
+ * what was filed on them before is weighed again.
  */
-export function planFolders(items: Item[]): Map<string, FolderProposal> {
+export function planFolders(items: Item[], opts: FolderOptions = {}): Map<string, FolderProposal> {
   const out = new Map<string, FolderProposal>();
   const ws = findWorkspaces(items);
   /** Lowercased names already placed in each destination folder. */
@@ -108,14 +125,18 @@ export function planFolders(items: Item[]): Map<string, FolderProposal> {
   const isWorkspace = (d: Dir) => ws.dirs.has(`${d.root}\0${d.rel}`);
 
   /** Places `d`'s contents into `dest`, keeping its shape. */
-  const place = (d: Dir, dest: string, label: string, how: "kept" | "lifted" | "workspace") => {
+  const place = (d: Dir, dest: string, label: string, how: "kept" | "lifted" | "workspace" | "refiled" | "filed") => {
     const names = claimed(dest);
     const reason =
       how === "workspace"
         ? `Kept together with the “${label}” workspace`
         : how === "lifted"
           ? `Rescued “${label}” from clutter and moved it whole`
-          : `Kept with “${label}”`;
+          : how === "refiled"
+            ? `Moved “${label}” whole to the shelf that fits what it holds`
+            : how === "filed"
+              ? `Already filed with “${label}”`
+              : `Kept with “${label}”`;
     for (const it of d.items) {
       names.add(it.name.toLowerCase());
       out.set(it.id, { dest, reason, firm: how === "workspace" });
@@ -163,12 +184,29 @@ export function planFolders(items: Item[]): Map<string, FolderProposal> {
     return dest;
   };
 
+  /**
+   * Where a named folder already on a shelf belongs. It stays put unless it sits on a shelf for one kind of
+   * file and at least two thirds of it is another kind, or its own name says where it goes.
+   */
+  const reshelve = (d: Dir, shelf: string, above: string[]): string | null => {
+    if (!KIND_SHELVES.has(shelf.toLowerCase())) return null;
+    const target = liftTarget(d, above);
+    const to = target.split("/")[0]!;
+    if (to.toLowerCase() === shelf.toLowerCase() || to === "Inbox") return null;
+    const total = Object.values(d.tally).reduce((a, b) => a + b, 0);
+    const byKind = KIND_SHELVES.has(to.toLowerCase()) && !isWorkspace(d);
+    if (byKind && d.tally[to as Area] * 3 < total * 2) return null;
+    return target;
+  };
+
   /** Walks clutter: loose files are left to sort, named folders inside are lifted out. */
-  const clutter = (d: Dir, above: string[]) => {
+  const clutter = (d: Dir, above: string[], shelf?: string) => {
     const top = !d.rel;
     for (const it of d.items) {
       if (it.type !== "unit") continue;
-      if (top) {
+      if (shelf) {
+        out.set(it.id, { dest: d.rel, reason: `Project (${it.unitReason ?? "marker found"}), already filed so left where it is` });
+      } else if (top) {
         claimed("").add(it.name.toLowerCase());
         out.set(it.id, { dest: "", reason: `Project (${it.unitReason ?? "marker found"}), already at the top so left where it is` });
       } else out.set(it.id, { dest: "Code", reason: `Project folder (${it.unitReason ?? "marker found"}), rescued from clutter` });
@@ -181,9 +219,25 @@ export function planFolders(items: Item[]): Map<string, FolderProposal> {
       (isNamed(sub.name) && words(d.name) !== "users") ||
       (top && /^(backups?|archives?|archived)$/.test(words(sub.name))) ||
       sub.dirs.some((c) => MACHINE_ID.test(c.name));
-    if (top) for (const sub of d.dirs) if (named(sub)) claimed("").add(sub.name.toLowerCase());
+    const isShelf = (sub: Dir) => Boolean(opts.reassess) && top && SHELVES.has(words(sub.name));
+    if (top) for (const sub of d.dirs) if (named(sub) || isShelf(sub)) claimed("").add(sub.name.toLowerCase());
+    // Folders staying on a shelf claim their names before anything is moved onto it.
+    if (shelf) for (const sub of d.dirs) if (named(sub)) claimed(d.rel).add(sub.name.toLowerCase());
     for (const sub of d.dirs) {
       const how = isWorkspace(sub) ? "workspace" : top ? "kept" : "lifted";
+      if (isShelf(sub)) {
+        clutter(sub, above, sub.name);
+        continue;
+      }
+      if (shelf) {
+        if (BUCKET.test(words(sub.name)) || !named(sub)) clutter(sub, [...above, sub.name], shelf);
+        else {
+          const target = how === "workspace" ? null : reshelve(sub, shelf, above);
+          if (target) place(sub, target, sub.name, "refiled");
+          else place(sub, posixJoin(d.rel, sub.name), sub.name, how === "workspace" ? how : "filed");
+        }
+        continue;
+      }
       if (top && named(sub)) {
         place(sub, sub.name, sub.name, how);
         continue;

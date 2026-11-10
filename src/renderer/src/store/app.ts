@@ -43,6 +43,8 @@ type State = {
   sample: boolean;
   scan: ScanState;
   layout: Layout;
+  /** Smart layout only: look again at what Fathom filed before, not just at what's still a mess. */
+  reassess: boolean;
   proposals: Map<string, Proposal>;
   overrides: Record<string, string>;
   excluded: Record<string, true>;
@@ -56,11 +58,12 @@ type State = {
 
   init: () => Promise<void>;
   goto: (s: Screen) => void;
-  startScan: (roots: string[]) => Promise<void>;
+  startScan: (roots: string[], opts?: { reassess?: boolean }) => Promise<void>;
   cancelScan: () => void;
   skipDupes: () => void;
   loadSample: () => void;
   setLayout: (l: Layout) => void;
+  setReassess: (on: boolean) => void;
   recompute: () => void;
   moveTo: (ids: string[], dir: string) => void;
   togglePin: (ids: string[]) => void;
@@ -130,6 +133,7 @@ export const useApp = create<State>((set, get) => {
     sample: false,
     scan: emptyScan(),
     layout: "smart",
+    reassess: false,
     proposals: new Map(),
     overrides: {},
     excluded: {},
@@ -152,10 +156,16 @@ export const useApp = create<State>((set, get) => {
 
     goto: (screen) => set({ screen }),
 
-    startScan: async (roots) => {
+    startScan: async (roots, opts) => {
+      // A re-assess only means something in the smart layout, so asking for one switches to it.
+      if (opts?.reassess && get().layout !== "smart") {
+        set({ layout: "smart" });
+        void get().saveSettings({ layout: "smart" });
+      }
       set({
         screen: "scanning",
         roots,
+        reassess: Boolean(opts?.reassess),
         items: [],
         sample: false,
         scan: emptyScan(),
@@ -191,6 +201,7 @@ export const useApp = create<State>((set, get) => {
         roots: [DEMO_ROOT],
         items: buildDemoItems(),
         sample: true,
+        reassess: false,
         scan: { ...emptyScan(), phase: "done" },
         overrides: {},
         excluded: {},
@@ -212,9 +223,15 @@ export const useApp = create<State>((set, get) => {
       void get().saveSettings({ layout });
     },
 
+    setReassess: (reassess) => {
+      if (reassess === get().reassess) return;
+      set({ reassess });
+      get().recompute();
+    },
+
     recompute: () => {
-      const { items, layout, settings } = get();
-      set({ proposals: proposeAll(items, layout, settings?.rules ?? [], Date.now()) });
+      const { items, layout, settings, reassess } = get();
+      set({ proposals: proposeAll(items, layout, settings?.rules ?? [], Date.now(), { reassess }) });
     },
 
     moveTo: (ids, dir) => {

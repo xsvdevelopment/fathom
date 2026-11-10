@@ -85,7 +85,7 @@ describe("smart layout, folder first", () => {
       mk({ rel: "Backups/NSB/refresh.ps1" }),
       mk({ rel: "Backups/NSB/photo.jpg" }),
     ]);
-    expect(out["old macbook backup/Users/alex/Desktop/notes.txt"]).toBe("Documents");
+    expect(out["old macbook backup/Users/alex/Desktop/notes.txt"]).toBe("Documents/Notes");
     expect(out["Backups/NSB/refresh.ps1"]).toBe("Backups/NSB");
     expect(out["Backups/NSB/photo.jpg"]).toBe("Backups/NSB");
   });

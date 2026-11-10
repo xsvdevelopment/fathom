@@ -22,13 +22,18 @@ Choose **More info**, then **Run anyway**.
    drag files onto folders, pin a destination, or mark things "Don't move". Ctrl+Z undoes plan edits.
 3. **Review & move.** Fathom re-checks every file against the disk, shows what it found, and asks for a clear yes.
 4. **Undo** any run later from **History**.
+5. **Re-assess** a folder Fathom sorted before, from **History** or with the **Re-assess sorted** switch in
+   the plan. Files on Fathom's own shelves (Media, Documents, Inbox and the rest) are judged afresh, and a
+   folder sitting on the wrong shelf moves whole to the right one. Folders you named stay in one piece, and
+   nothing moves until you review the plan.
 
 **Try the sample desk** shows a 40-folders-deep example without touching any files.
 
 ## Safety model
 
 - **Nothing is deleted.** Exact duplicates (same bytes, checked by hash) go to `_Fathom Review/Duplicates/`,
-  keeping their original folder structure.
+  keeping their original folder structure. The copy that stays is the one with the original name, in a folder
+  someone filed it in, over a "Copy of" or a stray on the Desktop.
 - **Never overwrites.** Name clashes get ` (2)`; a file that appears at a target after the check is left alone.
 - **Write-ahead journal.** Each move is recorded on disk *before* it happens. If the app or PC dies mid-run,
   the next launch offers to finish or roll back.

@@ -1,3 +1,4 @@
+import { keeperOrder } from "./keeper";
 import { kindOf } from "./kinds";
 import { basename, extOf } from "./paths";
 import type { Item } from "./types";
@@ -330,7 +331,7 @@ export function buildDemoItems(): Item[] {
       .replace(/ \(\d+\)(?=\.[^.]+$)/, "");
   const COPY_NAMES = new Set(["lease-signed.pdf", "budget-2024.xlsx", "tax-return-2019.pdf", "resume_final.pdf", "todo.txt", "resume_final_v8_use_this.pdf", "notes.txt"]);
   const keeper = new Map<string, Item>();
-  const sorted = [...items].sort((a, b) => a.rel.split("/").length - b.rel.split("/").length || a.rel.localeCompare(b.rel));
+  const sorted = [...items].sort(keeperOrder);
   for (const it of sorted) {
     if (it.type !== "file" || !COPY_NAMES.has(base(it.name))) continue;
     const k = keeper.get(base(it.name));

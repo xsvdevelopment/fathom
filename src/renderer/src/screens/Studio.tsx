@@ -8,6 +8,7 @@ import {
   HardDrive,
   Pin,
   RotateCcw,
+  ScanSearch,
   Search,
   Undo2,
   X,
@@ -57,6 +58,8 @@ export function Studio() {
   const sample = useApp((s) => s.sample);
   const layout = useApp((s) => s.layout);
   const setLayout = useApp((s) => s.setLayout);
+  const reassess = useApp((s) => s.reassess);
+  const setReassess = useApp((s) => s.setReassess);
   const query = useApp((s) => s.query);
   const setQuery = useApp((s) => s.setQuery);
   const filter = useApp((s) => s.filter);
@@ -216,6 +219,23 @@ export function Studio() {
               </button>
             ))}
           </div>
+          {layout === "smart" ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={reassess}
+              onClick={() => setReassess(!reassess)}
+              data-testid="reassess"
+              title="Look again at folders Fathom already sorted (Media, Documents, Inbox and the rest): files are judged afresh, and a folder on the wrong shelf moves whole to the right one. Folders you named yourself stay in one piece."
+              className={cn(
+                "flex h-10 items-center gap-1.5 rounded-lg bg-muted px-3 text-xs font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
+                reassess && "bg-primary text-primary-foreground hover:text-primary-foreground",
+              )}
+            >
+              <ScanSearch className="size-3.5" />
+              Re-assess sorted
+            </button>
+          ) : null}
           <div className="relative w-64">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

@@ -1,4 +1,4 @@
-import { ArrowLeft, FolderOpen, NotebookText, RotateCcw } from "lucide-react";
+import { ArrowLeft, FolderOpen, NotebookText, RotateCcw, ScanSearch } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { RunInfo } from "@shared/types";
@@ -6,6 +6,7 @@ import { TitleBar } from "@/components/fathom/titlebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { vetRoots } from "@/lib/pick";
 import { folderName, formatCount, formatWhen, middleTruncate, plural, errText } from "@/lib/utils";
 import { useApp } from "@/store/app";
 
@@ -19,6 +20,7 @@ const STATUS: Record<RunInfo["status"], { label: string; variant: "default" | "o
 export function HistoryScreen() {
   const goto = useApp((s) => s.goto);
   const startJob = useApp((s) => s.startJob);
+  const startScan = useApp((s) => s.startScan);
   const [runs, setRuns] = useState<RunInfo[] | null>(null);
   const [confirm, setConfirm] = useState<RunInfo | null>(null);
 
@@ -34,6 +36,13 @@ export function HistoryScreen() {
     } catch (err) {
       toast.error(errText(err, "Couldn't start."));
     }
+  };
+
+  /** Scans a folder Fathom sorted before and plans it again, shelves included. Nothing moves until reviewed. */
+  const reassess = async (r: RunInfo) => {
+    // The folder was already accepted for a run, so a warning about it is not news.
+    const ok = await vetRoots([r.destRoot], () => Promise.resolve(true));
+    if (ok.length) await startScan(ok, { reassess: true });
   };
 
   return (
@@ -79,6 +88,18 @@ export function HistoryScreen() {
                       <Button variant="ghost" size="sm" onClick={() => void window.fathom.runFolder(r.runId)} title="Open this run's record">
                         <NotebookText />
                       </Button>
+                      {r.status === "applied" ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void reassess(r)}
+                          title="Scan this folder again and re-check what was sorted. You review the plan before anything moves."
+                          data-testid="reassess-run"
+                        >
+                          <ScanSearch />
+                          Re-assess
+                        </Button>
+                      ) : null}
                       {r.status === "incomplete" ? (
                         <Button size="sm" onClick={() => void run(r, "finish")}>
                           Finish

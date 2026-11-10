@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { open } from "node:fs/promises";
 import { join } from "node:path";
+import { keeperOrder } from "@shared/keeper";
 import type { Item } from "@shared/types";
 import { CancelledError } from "./scan";
 
@@ -56,7 +57,7 @@ async function pool<T>(list: T[], n: number, fn: (t: T) => Promise<void>) {
 
 /**
  * Marks exact duplicates: same size → same first 64 KB → same full sha1.
- * The shallowest copy (then the oldest) is kept; the others get `duplicateOf`.
+ * The best-placed copy is kept (see keeperOrder); the others get `duplicateOf`.
  */
 export async function findDuplicates(items: Item[], opts: DupeOptions): Promise<Item[]> {
   const out = items.map((i) => ({ ...i, duplicateOf: undefined, hash: undefined }) as Item);
@@ -97,9 +98,8 @@ export async function findDuplicates(items: Item[], opts: DupeOptions): Promise<
     bump();
   });
 
-  const depth = (i: Item) => i.rel.split("/").length;
   for (const group of groupBy(fullNeeded, (i) => full.get(i.id))) {
-    group.sort((a, b) => depth(a) - depth(b) || a.mtimeMs - b.mtimeMs || a.rel.localeCompare(b.rel));
+    group.sort(keeperOrder);
     const [keep, ...rest] = group;
     keep!.hash = full.get(keep!.id);
     for (const r of rest) {

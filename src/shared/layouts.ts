@@ -1,10 +1,11 @@
-import { classifySmart } from "./classify";
-import { planFolders } from "./folders";
+import { classifyLoose, classifySmart, type Loose } from "./classify";
+import { planFolders, type FolderOptions } from "./folders";
 import { itemDate, monthOf, yearOf } from "./dates";
 import { KIND_LABEL } from "./kinds";
 import { isNoiseFolder } from "./noise";
 import { parentPath, posixJoin } from "./paths";
 import { expandTemplate, matchRule } from "./rules";
+import { settleLoose } from "./settle";
 import type { Item, Layout, Proposal, Rule } from "./types";
 
 export const REVIEW_DIR = "_Fathom Review";
@@ -43,12 +44,21 @@ function byLayout(item: Item, layout: Layout): Proposal {
 
 /**
  * Proposes a destination dir for every item: user rules, then workspaces, then duplicates, then the layout.
- * Smart places whole folders first (see planFolders); only loose files are sorted one by one.
+ * Smart places whole folders first (see planFolders); only loose files are sorted one by one, and those are
+ * settled together at the end (see settleLoose) so they can join folders the plan keeps.
  */
-export function proposeAll(items: Item[], layout: Layout, rules: Rule[], now: number): Map<string, Proposal> {
+export function proposeAll(
+  items: Item[],
+  layout: Layout,
+  rules: Rule[],
+  now: number,
+  opts: FolderOptions = {},
+): Map<string, Proposal> {
   const active = rules.filter((r) => r.enabled);
   const out = new Map<string, Proposal>();
-  const folders = layout === "smart" ? planFolders(items) : null;
+  const folders = layout === "smart" ? planFolders(items, opts) : null;
+  const loose: { item: Item; placed: Loose }[] = [];
+  const kept = new Set<string>();
   for (const item of items) {
     const rule = active.find((r) => matchRule(item, r, now));
     const placed = folders?.get(item.id);
@@ -63,9 +73,16 @@ export function proposeAll(items: Item[], layout: Layout, rules: Rule[], now: nu
       });
     } else if (placed) {
       out.set(item.id, { dest: placed.dest, reason: placed.reason });
+      // A project at the top is "kept" in the root itself; that is not a folder to file things into.
+      if (item.type === "file") kept.add(placed.dest);
+    } else if (layout === "smart") {
+      // Held back so the map keeps scan order; filled in below.
+      out.set(item.id, { dest: "", reason: "" });
+      loose.push({ item, placed: classifyLoose(item) });
     } else {
       out.set(item.id, byLayout(item, layout));
     }
   }
+  for (const [id, p] of settleLoose(loose, [...kept])) out.set(id, p);
   return out;
 }
